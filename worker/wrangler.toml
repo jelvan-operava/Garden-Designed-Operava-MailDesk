@@ -1,0 +1,8 @@
+name = "operava-maildesk-api"
+main = "src/index.js"
+compatibility_date = "2026-09-22"
+workers_dev = true
+
+[vars]
+# Set public values with `wrangler secret put` for a single secure deployment flow.
+# FRONTEND_URL = "https://maildesk.example.com"
