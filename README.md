@@ -1,49 +1,32 @@
-# OPERAVA MailDesk - Email Components
+# OPERAVA MailDesk
 
-> **Email Management System for OPERAVA Global Solutions**
-> www.operavaglobal.com
+OPERAVA MailDesk is a secure, garden-themed email workspace. It keeps the original light-gray and purple-to-orange visual language while replacing the demo-only flow with a deployable application:
 
-**Brand:** OPERAVA MailDesk  
-**Theme:** Light Gray `#E5E7EB` + Purple-Orange Gradient `#8B5CF6 → #F97316`
+- **Supabase Auth** provides the email/password login and session used by the mailbox.
+- **Cloudflare Pages** serves the static application; a **Cloudflare Worker** protects the API.
+- **Supabase Postgres + RLS** stores each user’s messages and Resend delivery events.
+- **Resend** sends email only from the Worker and posts signed status notifications to `/webhooks/resend`.
 
----
+## Repository map
 
-## 🌐 About Operava Global Solutions
-**OPERAVA Global Solutions** - Automation, Technology and Global Business Outsourcing Solutions.
-Website: **www.operavaglobal.com**
-© All rights reserved, system owned and developed internally by OPERAVA GLOBAL SOLUTIONS.
+| Path | Purpose |
+| --- | --- |
+| `index.html`, `app.css`, `app.js` | Browser login, mailbox, compose, and send flow. |
+| `app-config.js` | Public Pages configuration template (Supabase URL/anon key and Worker URL only). |
+| `worker/src/index.js` | Worker API: authenticated mailbox routes, Resend send request, signed webhook ingestion. |
+| `worker/wrangler.toml` | Worker deployment configuration. |
+| `supabase/migrations/0001_maildesk.sql` | Tables, indexes, RLS, and Realtime publication. |
+| `DEPLOYMENT.md` | Complete production setup and verification process. |
 
-## 📦 Components
-1. **Login Page** - Minimalist, only Email Sign-In (no SSO), animated orbs, gradient icons
-2. **MailDesk App** - Dashboard (Total Sent, Today, Last 7 Days, 1 Month + Live Date/Time KL + Movable Sticky Notes for motivational/family pictures), Inbox, Sent with custom folders & drag & drop, Outbox "Unable to send", Scheduled, Templates, Notes, Trash, Profile/Settings with Write/HTML Raw toggle
+## Local checks
 
-## 🎨 Design
-- Bg #f8f5e9, Card #fff, Primary #E5E7EB, Border #e7e5d8, Text #374151
-- Gradient: linear-gradient(135deg, #8B5CF6 0%, #A855F7 25%, #F97316 75%, #FB923C 100%) for ALL icons
-- Fonts: Playfair Display 22px logo, Inter 14px body, JetBrains Mono 13px code
-- Sidebar 280px, Top Bar 64px, Card radius 16px
+```bash
+node --check app.js
+node --check worker/src/index.js
+```
 
-## 🚀 Backend Stack (Recommended)
-- GitHub + Cloudflare Pages (frontend) + Cloudflare Workers (Hono.js API) + Supabase (Auth, DB, Storage) + Resend (sending + webhooks)
+Use `DEPLOYMENT.md` for the required Supabase, Resend, Worker, Pages, CORS, and webhook setup. Do not put a Resend API key, Supabase service-role key, or Resend webhook secret in browser files.
 
-Full docs in `OPERAVA_MailDesk_Documentation.txt` and backend artifact.
+## Legacy design artifacts
 
-## 📡 Resend Delivery Control & Automations
-
-`mailbox_pages.html` includes a **Resend monitor** launcher that keeps the existing MailDesk flow intact while surfacing delivery health in-context:
-
-- Live delivery, engagement, bounce, and complaint event monitoring linked to Resend email IDs.
-- Webhook endpoint health and the signed `POST /webhooks/resend` ingestion contract.
-- API coverage for email operations, domains, audiences/contacts, broadcasts, webhooks, and analytics. API secrets remain in the Cloudflare Worker.
-- Reviewable, local demo automation controls for verified events. The intended production path is **Resend webhook → Cloudflare Worker signature verification → Workers AI classification/drafting → auditable action**.
-
-The static artifact uses sample event data and persists automation toggles in `localStorage` under `operava-resend-automations-v1`; wire the displayed controls to the Worker routes described in the backend artifact for live production data.
-
-## 🛠️ Dev
-No build - just open HTML files. localStorage keys: operava-emails-v1, operava-board-v1, operava-auth
-
-## Deployment
-
-Cloudflare Pages serves `index.html` as the MailDesk application entry point. The original standalone artifacts remain available as `/login` and `/backend` through `_redirects`.
-
-The Resend monitor reads live account records from the Cloudflare Worker `GET /emails` endpoint when a bearer token is available. Set a deployment-specific Worker origin with either the `operava-api-base` meta tag in `index.html` or browser local storage (`operava-api-base`); the default is `https://api.operava-maildesk.workers.dev`. Keep Resend and Supabase secrets in Worker secrets—never in this static site.
+`login_page.html`, `mailbox_pages.html`, and `operava-maildesk-backend-stack.html` are retained as visual/reference artifacts. The production entry point is `index.html`.
