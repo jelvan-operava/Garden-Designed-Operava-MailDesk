@@ -28,5 +28,16 @@ Website: **www.operavaglobal.com**
 
 Full docs in `OPERAVA_MailDesk_Documentation.txt` and backend artifact.
 
+## 📡 Resend Delivery Control & Automations
+
+`mailbox_pages.html` includes a **Resend monitor** launcher that keeps the existing MailDesk flow intact while surfacing delivery health in-context:
+
+- Live delivery, engagement, bounce, and complaint event monitoring linked to Resend email IDs.
+- Webhook endpoint health and the signed `POST /webhooks/resend` ingestion contract.
+- API coverage for email operations, domains, audiences/contacts, broadcasts, webhooks, and analytics. API secrets remain in the Cloudflare Worker.
+- Reviewable, local demo automation controls for verified events. The intended production path is **Resend webhook → Cloudflare Worker signature verification → Workers AI classification/drafting → auditable action**.
+
+The static artifact uses sample event data and persists automation toggles in `localStorage` under `operava-resend-automations-v1`; wire the displayed controls to the Worker routes described in the backend artifact for live production data.
+
 ## 🛠️ Dev
 No build - just open HTML files. localStorage keys: operava-emails-v1, operava-board-v1, operava-auth
