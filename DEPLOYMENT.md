@@ -1,61 +1,112 @@
+
 # Deploy OPERAVA MailDesk
 
-This repository deploys as a **Cloudflare Pages static app** plus a **Cloudflare Worker API**. Supabase owns authentication and Postgres; Resend delivers mail and posts signed delivery events to the Worker. No Resend key or Supabase service-role key belongs in Pages or `app-config.js`.
+This guide documents the current repository implementation. It intentionally does not describe unimplemented boards, attachments, storage workflows, or additional mailbox features as if they were live.
 
-## 1. Create and configure Supabase
+## 1. Supabase
 
-1. Create a Supabase project and copy its project URL, **anon** key, and **service_role** key.
-2. In **Authentication → Providers → Email**, enable email/password. Create the initial users from **Authentication → Users**, or enable the desired invitation flow. For production, set the Site URL to the final Pages domain and add the Pages preview domain(s) to Redirect URLs if you use email confirmations or resets.
-3. Run `supabase/migrations/0001_maildesk.sql` in the SQL Editor (or use `supabase db push` from a linked project). This creates the mailbox tables, indexes, RLS policies, and Realtime publication.
+1. Create a Supabase project.
+2. In Authentication → Providers → Email, enable email/password authentication.
+3. Create the users who should be allowed to sign in.
+4. Run supabase/migrations/0001_maildesk.sql in the Supabase SQL Editor or apply it through your normal migration workflow.
+5. Keep the Supabase service-role key server-side only.
 
-## 2. Configure Resend
+The current migration creates emails and email_events, applies RLS, and adds the emails table to the Realtime publication. The current browser code does not subscribe to Realtime, so Realtime is available at the database layer but is not currently part of the active UI flow.
 
-1. Add and verify the sending domain in Resend. Publish every DNS record Resend presents before sending production mail.
-2. Create a Sending API key and choose one verified mailbox as `RESEND_FROM` (for example, `OPERAVA MailDesk <mail@your-domain.example>`).
-3. Deploy the Worker in step 3, then add the webhook endpoint `https://<worker-domain>/webhooks/resend` in Resend. Subscribe to at least `email.sent`, `email.delivered`, `email.bounced`, `email.complained`, `email.opened`, and `email.clicked`.
-4. Copy the Resend webhook signing secret (`whsec_…`). The Worker validates Svix headers and rejects stale or invalid events before writing `email_events`.
+## 2. Resend
 
-## 3. Deploy the Worker
+1. Verify the sending domain in Resend.
+2. Create a Resend API key.
+3. Choose a verified sender for the Worker RESEND_FROM value.
+4. Configure a Resend webhook pointing to:
 
-From `worker/`, authenticate and set values. `FRONTEND_URL` may contain a comma-separated Pages production/preview allowlist.
+    https://<worker-domain>/webhooks/resend
 
-```bash
-cd worker
-npm install
-npx wrangler login
-npx wrangler secret put SUPABASE_URL
-npx wrangler secret put SUPABASE_ANON_KEY
-npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-npx wrangler secret put RESEND_API_KEY
-npx wrangler secret put RESEND_FROM
-npx wrangler secret put RESEND_WEBHOOK_SECRET
-npx wrangler secret put FRONTEND_URL
-npm run check
-npm run deploy
-```
+5. Configure the webhook signing secret as RESEND_WEBHOOK_SECRET.
 
-Confirm `https://<worker-domain>/health` returns `{"ok":true}`. Use the deployed URL in the next step. Keep `FRONTEND_URL` exact—CORS deliberately does not allow arbitrary origins.
+The Worker verifies the Resend/Svix signature before accepting webhook data.
 
-## 4. Deploy Cloudflare Pages
+## 3. Cloudflare Worker
 
-1. In Cloudflare Pages, create a project from this repository.
-2. Use the repository root as the build output directory and leave the build command empty. This is a static application; do **not** configure a framework preset that overwrites the files.
-3. Before production deploy, replace the three placeholders in `app-config.js` with the Supabase URL, Supabase anon key, and deployed Worker URL. These are public browser values.
-4. Deploy and add the final custom domain. Update `FRONTEND_URL` on the Worker to include that exact origin and redeploy the Worker if it changed.
+From worker/:
 
-## 5. Production verification
+    npm install
+    npx wrangler login
 
-```bash
-curl -fsS https://<worker-domain>/health
-node --check app.js
-node --check worker/src/index.js
-```
+    npx wrangler secret put SUPABASE_URL
+    npx wrangler secret put SUPABASE_ANON_KEY
+    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+    npx wrangler secret put RESEND_API_KEY
+    npx wrangler secret put RESEND_FROM
+    npx wrangler secret put RESEND_WEBHOOK_SECRET
+    npx wrangler secret put FRONTEND_URL
 
-Then sign in with a Supabase user, send a message to an approved test recipient, and verify: an `emails` row has a Resend ID, the Resend dashboard shows the request, and the webhook creates a matching `email_events` row. Test a Resend webhook from its dashboard only after configuring `RESEND_WEBHOOK_SECRET`.
+    npm run check
+    npm run deploy
 
-## Operational notes
+The Worker currently exposes:
+- GET /health
+- POST /webhooks/resend
+- authenticated GET /emails
+- authenticated POST /emails
 
-- The Worker authenticates every mailbox route against Supabase Auth and passes the user JWT to PostgREST, so RLS remains enforced.
-- Webhooks use the service-role key only after signature validation. It is never exposed to the browser.
-- The current compose UI sends HTML produced from plain text. Add an approved HTML sanitizer before allowing arbitrary rich-text HTML from untrusted operators.
-- Rotate Resend and Supabase secrets in Cloudflare if a secret is exposed; do not commit `.dev.vars`, API keys, or webhook secrets.
+FRONTEND_URL controls the CORS allowlist.
+
+## 4. Static frontend
+
+The production frontend is the repository root:
+- index.html
+- app.css
+- app.js
+- app-config.js
+
+For deployment, provide app-config.js with the public Supabase project URL, Supabase anon key, and deployed Worker API URL.
+
+Do not put the service-role key, Resend API key, or webhook secret into app-config.js.
+
+The application can be served as a static Cloudflare Pages site. No framework build step is required by the current repository.
+
+## 5. Verification
+
+    cd worker
+    npm run check
+
+    node --check app.js
+
+    curl -fsS https://<worker-domain>/health
+
+Functional test:
+1. Open the deployed frontend.
+2. Sign in with a configured Supabase user.
+3. Confirm the mailbox loads.
+4. Compose and send a test message.
+5. Confirm the Worker creates/updates the corresponding emails record.
+6. Confirm Resend receives the request.
+7. Confirm a signed Resend webhook creates the corresponding email_events record.
+
+## 6. Important implementation boundaries
+
+The following are not currently implemented in the production source and must not be documented as live features:
+- /boards/* API routes
+- sticky-note/board UI
+- Supabase Storage attachment workflow
+- attachment database records
+- folders beyond the current status/filter model
+- message threading
+- rich-text editor
+- file attachments
+- browser-side Realtime subscription
+- full delivered/opened/clicked mailbox-state synchronization
+- GitHub Actions deployment workflow
+
+They can be documented separately as future work when implemented.
+
+## 7. Secrets
+
+Never commit:
+- .dev.vars
+- Supabase service-role keys
+- Resend API keys
+- Resend webhook signing secrets
+
+If a server secret is exposed, rotate it in the relevant provider and update the Cloudflare Worker secret.
