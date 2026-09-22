@@ -41,3 +41,9 @@ The static artifact uses sample event data and persists automation toggles in `l
 
 ## 🛠️ Dev
 No build - just open HTML files. localStorage keys: operava-emails-v1, operava-board-v1, operava-auth
+
+## Deployment
+
+Cloudflare Pages serves `index.html` as the MailDesk application entry point. The original standalone artifacts remain available as `/login` and `/backend` through `_redirects`.
+
+The Resend monitor reads live account records from the Cloudflare Worker `GET /emails` endpoint when a bearer token is available. Set a deployment-specific Worker origin with either the `operava-api-base` meta tag in `index.html` or browser local storage (`operava-api-base`); the default is `https://api.operava-maildesk.workers.dev`. Keep Resend and Supabase secrets in Worker secrets—never in this static site.
