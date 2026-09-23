@@ -1,19 +1,15 @@
-
 # OPERAVA MailDesk — LLM Implementation Reference
 
 This file is the machine-readable source of truth for coding agents working in this repository.
 
 ## Authority
 
-Follow the current source code and current database migration over historical/reference HTML artifacts.
-
-Do not invent routes, tables, UI features, integrations, or deployment workflows that are not present in the current source.
+Follow the current source code and database migration. Do not invent routes, tables, UI features, integrations, or deployment workflows that are not present.
 
 ## Product
 
-OPERAVA MailDesk is a secure, garden-themed email workspace.
+OPERAVA MailDesk is a secure, garden-themed internal email workspace.
 
-Production browser entry point: index.html
 Brand asset: operava_exact_transparent.png
 
 ## Current stack
@@ -24,49 +20,68 @@ Brand asset: operava_exact_transparent.png
 - Supabase Postgres + RLS
 - Resend API for server-side email delivery
 - Signed Resend webhook ingestion
-- Cloudflare Pages is the intended static hosting target
+- Cloudflare Pages for static frontend hosting
 
-## Current frontend
+## Browser routes
 
-Files:
-- index.html
-- app.css
-- app.js
-- app-config.js
+- / redirects to /login
+- /login serves login_page.html
+- /mailbox serves mailbox.html
+- /backend serves operava-maildesk-backend-stack.html
 
-The browser configuration contains only public Supabase URL/anon-key information and the Worker URL.
+There is one login experience only. Do not add a second login form to the mailbox.
 
-Current UI flow:
-1. sign in
-2. load mailbox
-3. filter current mailbox statuses exposed by the UI
-4. compose
-5. send
-6. sign out
+## Authentication
 
-Do not claim the UI has attachments, boards, threads, rich-text editing, live Realtime updates, or a full folder system unless the code is changed to implement them.
+Supabase Auth is the only authentication authority.
 
-## Current Worker routes
+Login:
+1. Browser sends email/password to the Supabase Auth password token endpoint.
+2. Successful authentication returns a Supabase session.
+3. The session is stored as operava-maildesk-session.
+4. Browser redirects to /mailbox.
+
+Mailbox:
+1. /mailbox requires operava-maildesk-session.
+2. The access token is validated against Supabase Auth /auth/v1/user.
+3. Invalid or missing sessions are cleared and redirected to /login.
+4. Worker API calls use Authorization: Bearer <access_token>.
+
+Logout:
+1. The browser calls Supabase Auth logout when a token exists.
+2. The local session is removed.
+3. Browser returns to /login.
+
+The following are forbidden authentication bypasses:
+- ?auth=1
+- ?logged_in=1
+- fake local sessions
+- operava_logged_in cookies
+- /api/auth/login
+- /api/auth/logout
+
+## Frontend files
+
+- index.html — root login entry, synchronized with login_page.html
+- login_page.html — official login UI
+- mailbox.html — authenticated MailDesk UI
+- app.js — functional lightweight mailbox/API implementation
+- app.css — shared mailbox styling
+- app-config.js — public browser configuration only
+- operava_exact_transparent.png — brand logo
+
+Do not place Supabase service-role/secret keys or Resend API keys in browser files.
+
+## Worker routes
 
 - GET /health
 - POST /webhooks/resend
 - authenticated GET /emails
 - authenticated POST /emails
 
-There are currently no /boards/* routes.
+The Worker validates the bearer token against Supabase Auth before protected routes.
 
-## Authentication
-
-The browser authenticates with Supabase Auth.
-
-Protected Worker routes require a bearer access token and verify the current user through Supabase Auth.
-
-Never expose:
-- Supabase service-role key
-- Resend API key
-- Resend webhook secret
-
-## Current database
+## Database
 
 Migration: supabase/migrations/0001_maildesk.sql
 
@@ -75,65 +90,64 @@ Objects:
 - table emails
 - table email_events
 
-RLS is enabled. User-owned email records are restricted to the authenticated user.
-
-The migration includes the emails table in the Realtime publication, but the current frontend does not subscribe to Realtime.
-
-There is currently no production schema for:
-- profiles
-- folders
-- templates
-- sticky notes
-- boards
-- attachments
+RLS is enabled. User-owned email records are restricted to authenticated users.
 
 ## Resend
 
-Sending is performed by the Worker.
+Sending is performed by the Worker. Resend webhook requests are verified with the configured signing secret.
 
-Webhook requests are validated using the configured Resend/Svix signing secret before accepted events are persisted.
+Current status mapping:
+- email.sent -> sent
+- email.bounced -> failed
+- email.complained -> failed
 
-Current mailbox-status mapping in the Worker includes:
-- email.sent → sent
-- email.bounced → failed
-- email.complained → failed
+Do not claim complete open/click/delivery synchronization.
 
-Do not describe this as complete open/click/delivery state synchronization.
+## Browser configuration
 
-## Deployment
+app-config.js contains only:
+- supabaseUrl
+- supabaseAnonKey
+- apiBaseUrl
 
-Worker configuration lives in worker/wrangler.toml.
+Replace the placeholders with the project's public Supabase URL, browser-safe Supabase anon/publishable key, and deployed Worker URL during deployment.
 
-Use Cloudflare Worker secrets for server credentials.
+Never put:
+- Supabase service-role/secret key
+- Resend API key
+- Resend webhook secret
+in app-config.js.
 
-The root frontend is static and can be deployed through Cloudflare Pages.
+## Cloudflare deployment
+
+The frontend is static and requires no framework build command.
+
+Worker configuration: worker/wrangler.toml
+
+Worker secrets:
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+- RESEND_API_KEY
+- RESEND_FROM
+- RESEND_WEBHOOK_SECRET
+- FRONTEND_URL
 
 ## Validation
 
 Run:
-
     node --check app.js
     node --check worker/src/index.js
 
 Do not claim an end-to-end test suite exists.
 
-## Historical/reference artifacts
+## Not implemented
 
-These files may contain concepts or code that are not part of the current implementation:
-- login_page.html
-- mailbox_pages.html
-- operava-maildesk-backend-stack.html
-
-They are reference artifacts only.
-
-## Planned features
-
-Potential future work may include:
+Do not describe these as live features unless source and schema are changed:
+- boards/sticky-note workspace
 - Supabase Storage attachments
-- board/sticky-note workspace
-- richer mailbox organization
-- frontend Realtime subscriptions
-- richer delivery tracking
-- automated GitHub deployment workflow
-
-Planned features must not be presented as implemented until source code and schema support them.
+- message threading
+- rich-text editor
+- browser Realtime subscription
+- full delivered/opened/clicked tracking
+- GitHub Actions deployment workflow
