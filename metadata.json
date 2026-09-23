@@ -1,0 +1,6 @@
+{
+  "name": "OPERAVA MailDesk",
+  "description": "Garden-themed email workspace with mailbox management, email composition, and delivery tracking.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
