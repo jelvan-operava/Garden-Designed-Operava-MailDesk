@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OPERAVA MailDesk</title>
+  <script src="/app-config.js"></script>
+</head>
+<body>
+  <p id="boot" style="font:14px system-ui;padding:2rem;color:#6b7280">Loading OPERAVA MailDesk…</p>
+  <script>
+  (async function () {
+    var urls = [
+      'https://cdn.jsdelivr.net/gh/jelvan-operava/Garden-Designed-Operava-MailDesk@5709e26f1f5d8e7a6a66c2d48d664345b3fc995c/mailbox_pages.html',
+      'https://raw.githubusercontent.com/jelvan-operava/Garden-Designed-Operava-MailDesk/5709e26f1f5d8e7a6a66c2d48d664345b3fc995c/mailbox_pages.html'
+    ];
+    var html = null;
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var r = await fetch(urls[i]);
+        if (r.ok) { html = await r.text(); break; }
+      } catch (e) {}
+    }
+    if (!html) {
+      document.getElementById('boot').textContent = 'Could not load mailbox. Please refresh.';
+      return;
+    }
+    html = html.replace(/<script>\s*\(function\(\)\s*\{\s*var FOCUS_TYPE\s*=\s*"ecto:artifact[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<script>\s*\(function\(\)\s*\{\s*var loc\s*=\s*location\.href[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<script>[\s\S]*?operava-resend-automations-v1[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<\/body>/i, '<script src="/production-mailbox.js"><\/script></body>');
+    document.open(); document.write(html); document.close();
+  })();
+  </script>
+</body>
+</html>
