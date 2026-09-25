@@ -1,66 +1,34 @@
 # Deploy OPERAVA MailDesk
 
-## Architecture
+Production deployment guide.
 
-- /login is the only login screen and is served by login_page.html.
-- /mailbox is the authenticated MailDesk application.
-- Authentication is Supabase Auth email/password.
-- The browser stores the Supabase session under operava-maildesk-session.
-- The mailbox validates the access token against Supabase Auth before displaying the application.
-- The Worker validates the same Bearer access token before /emails access.
-- Resend API credentials and Supabase service-role credentials remain Worker-side secrets.
+## Cloudflare Worker secrets
 
-## Supabase
+```bash
+cd worker
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_ANON_KEY
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put RESEND_API_TOKEN
+npx wrangler secret put RESEND_FROM
+npx wrangler secret put WEBHOOK_SIGNING_SECRET
+npx wrangler secret put FRONTEND_URL
+npx wrangler secret put ADMIN_EMAIL
+npx wrangler secret put ADMIN_PASSWORD
+npm run deploy
+```
 
-1. Enable Email/password authentication.
-2. Create the authorized MailDesk users.
-3. Apply supabase/migrations/0001_maildesk.sql.
-4. Keep service-role/secret keys server-side only.
+## Admin login
 
-## Browser configuration
+Admin uses `ADMIN_EMAIL` + `ADMIN_PASSWORD` Worker secrets via `POST /auth/login`.
+Wrong credentials return: Incorrect Password and Email id
 
-Set the public values in app-config.js:
-- supabaseUrl: Supabase project URL.
-- supabaseAnonKey: browser-safe Supabase anon/publishable key.
-- apiBaseUrl: deployed Worker URL.
+## Pages
 
-Never put the Supabase service-role/secret key, Resend API key, or webhook secret in this file.
+Frontend deploys from this repo root. Pages Function: `functions/webhooks/resend.js`
 
-## Cloudflare Worker
+Env on Pages: WEBHOOK_SIGNING_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
-From worker/:
-    npm install
-    npx wrangler login
-    npx wrangler secret put SUPABASE_URL
-    npx wrangler secret put SUPABASE_ANON_KEY
-    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-    npx wrangler secret put RESEND_API_KEY
-    npx wrangler secret put RESEND_FROM
-    npx wrangler secret put RESEND_WEBHOOK_SECRET
-    npx wrangler secret put FRONTEND_URL
-    npm run check
-    npm run deploy
+## Migration 0005
 
-## Cloudflare Pages
-
-Use the repository root as the static output. No framework build command is required.
-
-Routes:
-- / -> /login
-- /login -> login_page.html
-- /mailbox -> mailbox.html
-
-## Authentication test
-
-1. Open /login.
-2. Sign in with a real Supabase Email/password user.
-3. Confirm operava-maildesk-session is created.
-4. Confirm /mailbox validates the access token.
-5. Confirm Worker API requests use the same Bearer token.
-6. Sign out and confirm the session is cleared and the browser returns to /login.
-
-The old auth=1, logged_in=1, cookie login, fake session, and /api/auth/login/logout bypasses are no longer part of the authentication model.
-
-## Secrets
-
-Never commit Supabase service-role/secret keys, Resend API keys, Resend webhook signing secrets, or .dev.vars.
+Run `supabase/migrations/0005_inbound_updates.sql` for inbound emails.
