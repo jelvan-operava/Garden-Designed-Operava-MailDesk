@@ -1,4 +1,3 @@
 /  /login  302
-/login  /login_page.html  200
-/mailbox  /mailbox_pages.html  200
-/backend  /operava-maildesk-backend-stack.html  200
+/login  /login.html  200
+/mailbox  /mailbox.html  200
