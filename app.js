@@ -34,7 +34,7 @@
     message(status, 'Signing in…', true);
     const response = await auth('token?grant_type=password', { method: 'POST', body: JSON.stringify({ email: $('#email').value, password: $('#password').value }) });
     const data = await response.json();
-    if (!response.ok) return message(status, data.error_description || data.msg || 'Unable to sign in.');
+    if (!response.ok) return message(status, data.error || data.error_description || data.msg || 'Incorrect Password and Email');
     session = data; localStorage.setItem(sessionKey, JSON.stringify(session)); showApp();
   });
   $('#compose').addEventListener('click', () => { $('#composer').hidden = false; $('#to').focus(); });

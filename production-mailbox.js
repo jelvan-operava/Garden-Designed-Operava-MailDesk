@@ -25,7 +25,7 @@
   }
   function eventRows(rows) {
     if (!rows || !rows.length) {
-      return '<li><span><b>No events yet</b><br><span class="resend-muted">Delivery and inbound events from Resend appear here.</span></span></li>';
+      return '<li><span><b>No events yet</b><br><span class="resend-muted">Live delivery and inbound events from Resend appear here.</span></span></li>';
     }
     return rows.map(function (e) {
       var kind = String(e.kind || e.event_type || 'info');
@@ -61,8 +61,7 @@
     } catch (_) { toast('Could not load delivery events.'); }
   }
   function webhookUrl() {
-    var base = apiBase();
-    return base ? base + '/webhooks/resend' : (location.origin + '/webhooks/resend');
+    return location.origin + '/webhooks/resend';
   }
   function bind() {
     var monitor = document.getElementById('resend-monitor');
@@ -94,7 +93,8 @@
     var testBtn = document.getElementById('resend-test-webhook');
     if (testBtn) {
       testBtn.textContent = 'Refresh from Worker';
-      testBtn.addEventListener('click', function () { loadEvents(); toast('Loaded live events from the Worker.'); });
+      testBtn.onclick = null;
+      testBtn.addEventListener('click', function () { loadEvents(); toast('Loaded live events.'); });
     }
     var copyBtn = document.getElementById('resend-copy-url');
     if (copyBtn) copyBtn.addEventListener('click', function () {
@@ -112,4 +112,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
   setTimeout(bind, 500);
+  setTimeout(loadEvents, 800);
 })();
