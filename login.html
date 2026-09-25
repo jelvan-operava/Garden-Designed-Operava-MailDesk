@@ -1,1 +1,75 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sign in</title><script>location.replace("/");</script></head><body><p><a href="/">OPERAVA MailDesk Sign in</a></p></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OPERAVA MailDesk - Sign In</title>
+  <script src="/app-config.js"></script>
+</head>
+<body>
+  <p id="boot" style="font:14px system-ui;padding:2rem;color:#6b7280">Loading OPERAVA MailDesk…</p>
+  <script>
+  (async function () {
+    var urls = [
+      'https://cdn.jsdelivr.net/gh/jelvan-operava/Garden-Designed-Operava-MailDesk@5709e26f1f5d8e7a6a66c2d48d664345b3fc995c/login_page.html',
+      'https://raw.githubusercontent.com/jelvan-operava/Garden-Designed-Operava-MailDesk/5709e26f1f5d8e7a6a66c2d48d664345b3fc995c/login_page.html'
+    ];
+    var html = null;
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var r = await fetch(urls[i]);
+        if (r.ok) { html = await r.text(); break; }
+      } catch (e) {}
+    }
+    if (!html) {
+      document.getElementById('boot').textContent = 'Could not load sign-in. Please refresh.';
+      return;
+    }
+    // Strip editor scaffolding
+    html = html.replace(/<script>\s*\(function\(\)\s*\{\s*var FOCUS_TYPE\s*=\s*"ecto:artifact[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<script>\s*\(function\(\)\s*\{\s*var loc\s*=\s*location\.href[\s\S]*?<\/script>/gi, '');
+
+    // BLANK login fields — no sample email or password of any kind
+    html = html.replace(/useState\("admin@operavaglobal\.com"\)/g, 'useState("")');
+    html = html.replace(/useState\("operava2026"\)/g, 'useState("")');
+    html = html.replace(/useState\("employee\.email@company\.com"\)/g, 'useState("")');
+    html = html.replace(/useState\("employee\.1245678"\)/g, 'useState("")');
+    // Catch any other prefilled email/password useState string defaults in the login form
+    html = html.replace(/useState\("[^"]*@[^"]+"\)/g, 'useState("")');
+
+    // SSO (as specified earlier)
+    html = html.replace(/Google SSO — coming soon/g, 'You are not permitted to use SSO at this time');
+    html = html.replace(/Microsoft SSO — coming soon/g, 'You are not permitted to use SSO at this time');
+    html = html.replace(/children:"Google"/g, 'children:"FOR INTERNAL USE ONLY."');
+    html = html.replace(/children:"Microsoft"/g, 'children:"FOR INTERNAL USE ONLY."');
+
+    // Footer (as specified earlier)
+    html = html.replace(
+      /© All rights reserved, a system owned and developed internally by OPERAVA GLOBAL SOLUTIONS\./g,
+      'All right reserved. OPERAVA GLOBAL SOLUTIONS . 2026'
+    );
+
+    // Do not show "Supabase authentication is not configured" when Worker apiBaseUrl is set
+    html = html.replace(
+      /if\(!U\|\|U\.includes\("YOUR_"\)\|\|!K\|\|K\.includes\("YOUR_"\)\)throw new Error\("Supabase authentication is not configured\. Please contact your administrator\."\);/g,
+      'var _api=(window.OPERAVA_CONFIG&&window.OPERAVA_CONFIG.apiBaseUrl)||"";if(!_api||String(_api).indexOf("YOUR_")>=0){if(!U||U.includes("YOUR_")||!K||K.includes("YOUR_"))throw new Error("Authentication is not configured. Set apiBaseUrl in app-config.js.");}'
+    );
+
+    // Wrong credentials message (as specified earlier)
+    html = html.replace(
+      /D\.error_description\|\|D\.msg\|\|"Unable to sign in\."/g,
+      'D.error||D.error_description||D.msg||"Incorrect Password and Email"'
+    );
+    html = html.replace(
+      /err\.message\|\|"Unable to sign in\."/g,
+      'err.message||"Incorrect Password and Email"'
+    );
+
+    // Production auth → Worker /auth/login
+    var patch = '<script>(function(){var c=window.OPERAVA_CONFIG||{},b=String(c.apiBaseUrl||"").replace(/\\/$/,"");if(!b||b.indexOf("YOUR_")>=0)return;var o=window.fetch;window.fetch=function(input,init){var u=typeof input==="string"?input:(input&&input.url)||"";if(!/\\/auth\\/v1\\/token\\?grant_type=password/.test(u)||!init||!init.body)return o.apply(this,arguments);var body;try{body=typeof init.body==="string"?JSON.parse(init.body):init.body;}catch(e){return o.apply(this,arguments);}if(!body||!body.email)return o.apply(this,arguments);return o(b+"/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:body.email,password:body.password})}).then(function(r){return r.text().then(function(t){var data;try{data=JSON.parse(t||"{}");}catch(e){data={error:"Incorrect Password and Email"};}if(!r.ok&&!data.error&&!data.error_description&&!data.msg){data.error="Incorrect Password and Email";}return new Response(JSON.stringify(data),{status:r.status,statusText:r.statusText,headers:{"content-type":"application/json"}});});});};})();<\\/script>';
+    html = html.replace(/<\/body>/i, patch + '</body>');
+    document.open(); document.write(html); document.close();
+  })();
+  </script>
+</body>
+</html>

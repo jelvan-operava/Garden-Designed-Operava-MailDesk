@@ -25,10 +25,23 @@
       document.getElementById('boot').textContent = 'Could not load mailbox. Please refresh.';
       return;
     }
+    // Strip editor scaffolding
     html = html.replace(/<script>\s*\(function\(\)\s*\{\s*var FOCUS_TYPE\s*=\s*"ecto:artifact[\s\S]*?<\/script>/gi, '');
     html = html.replace(/<script>\s*\(function\(\)\s*\{\s*var loc\s*=\s*location\.href[\s\S]*?<\/script>/gi, '');
+
+    // Remove mock Resend automations + fake event stream script entirely
     html = html.replace(/<script>[\s\S]*?operava-resend-automations-v1[\s\S]*?<\/script>/gi, '');
-    html = html.replace(/<\/body>/i, '<script src="/production-mailbox.js"><\/script></body>');
+
+    // Remove demo / mock copy in the design bundle
+    html = html.replace(/Attach — demo: file picker would open here/g, 'Attachments are managed from your message workflow');
+    html = html.replace(/recipients@example\.com/g, 'recipient@company.com');
+    html = html.replace(/>Send test event</g, '>Refresh from Worker<');
+    html = html.replace(/Q3 partnership proposal/g, '');
+    html = html.replace(/Welcome to OPERAVA MailDesk/g, 'OPERAVA MailDesk');
+
+    // Production Resend / notifications bridge
+    var prodScript = '<script src="/production-mailbox.js"><\/script>';
+    html = html.replace(/<\/body>/i, prodScript + '</body>');
     document.open(); document.write(html); document.close();
   })();
   </script>
