@@ -6,6 +6,15 @@ function cors(request, env) {
   return origin && allowed.includes(origin) ? { 'access-control-allow-origin': origin, vary: 'Origin' } : {};
 }
 function reply(data, status = 200, headers = {}) { return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...headers } }); }
+function requestId(request) { return request.headers.get('cf-ray') || crypto.randomUUID(); }
+function errorReply(code, message, status, requestIdValue, headers = {}) {
+  return reply({ error: { code, message, requestId: requestIdValue } }, status, { ...headers, 'x-request-id': requestIdValue });
+}
+function validEmail(value) { return typeof value === 'string' && value.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
+function emailIdFromPath(pathname) {
+  const match = pathname.match(/^\/emails\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i);
+  return match?.[1] || null;
+}
 function supabase(env, path, options = {}, service = false) {
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, { ...options, headers: { apikey: service ? env.SUPABASE_SERVICE_ROLE_KEY : env.SUPABASE_ANON_KEY, ...(options.headers || {}) } });
 }
@@ -32,10 +41,10 @@ async function verifyWebhook(request, body, secret) {
 
 export default {
   async fetch(request, env) {
-    const originHeaders = cors(request, env);
+    const originHeaders = cors(request, env); const rid = requestId(request);
     if (request.method === 'OPTIONS') return new Response(null, { headers: { ...originHeaders, 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'authorization,content-type', 'access-control-max-age': '86400' } });
     const url = new URL(request.url);
-    if (url.pathname === '/health') return reply({ ok: true }, 200, originHeaders);
+    if (url.pathname === '/health') return reply({ ok: true, requestId: rid }, 200, { ...originHeaders, 'x-request-id': rid });
 
     if (url.pathname === '/webhooks/resend' && request.method === 'POST') {
       const raw = await request.text();
@@ -49,15 +58,41 @@ export default {
     }
 
     const user = await requireUser(request, env);
-    if (!user) return reply({ error: 'Unauthorized' }, 401, originHeaders);
+    if (!user) return errorReply('AUTH_REQUIRED', 'Unauthorized', 401, rid, originHeaders);
     const authorization = request.headers.get('authorization');
+    if (url.pathname === '/me' && request.method === 'GET') {
+      return reply({ id: user.id, email: user.email || null }, 200, { ...originHeaders, 'x-request-id': rid });
+    }
+    const emailId = emailIdFromPath(url.pathname);
+    if (emailId && request.method === 'GET') {
+      const response = await supabase(env, `emails?id=eq.${emailId}&select=*`, { headers: { authorization } });
+      if (!response.ok) return errorReply('DATABASE_ERROR', 'Could not load email', 502, rid, originHeaders);
+      const rows = await response.json();
+      if (!rows.length) return errorReply('EMAIL_NOT_FOUND', 'Email not found', 404, rid, originHeaders);
+      return reply(rows[0], 200, { ...originHeaders, 'x-request-id': rid });
+    }
+    if (emailId && request.method === 'PATCH') {
+      let input;
+      try { input = await request.json(); } catch (_) { return errorReply('INVALID_REQUEST', 'Invalid JSON body', 400, rid, originHeaders); }
+      const allowed = ['is_read', 'is_starred', 'is_archived', 'is_deleted'];
+      const patch = Object.fromEntries(allowed.filter((key) => typeof input[key] === 'boolean').map((key) => [key, input[key]]));
+      if (!Object.keys(patch).length) return errorReply('INVALID_REQUEST', 'At least one supported boolean mailbox flag is required', 400, rid, originHeaders);
+      patch.updated_at = new Date().toISOString();
+      const response = await supabase(env, `emails?id=eq.${emailId}`, { method: 'PATCH', headers: { authorization, 'content-type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(patch) });
+      if (!response.ok) return errorReply('DATABASE_ERROR', 'Could not update email', 502, rid, originHeaders);
+      const rows = await response.json();
+      if (!rows.length) return errorReply('EMAIL_NOT_FOUND', 'Email not found', 404, rid, originHeaders);
+      return reply(rows[0], 200, { ...originHeaders, 'x-request-id': rid });
+    }
     if (url.pathname === '/emails' && request.method === 'GET') {
       const response = await supabase(env, 'emails?select=*&order=created_at.desc', { headers: { authorization } });
       return new Response(await response.text(), { status: response.status, headers: { ...JSON_HEADERS, ...originHeaders } });
     }
     if (url.pathname === '/emails' && request.method === 'POST') {
       const input = await request.json();
-      if (!input.to || !input.subject || !input.html) return reply({ error: 'to, subject, and html are required' }, 400, originHeaders);
+      if (!validEmail(input.to)) return errorReply('INVALID_REQUEST', 'A valid recipient email is required', 400, rid, originHeaders);
+      if (typeof input.subject !== 'string' || !input.subject.trim() || input.subject.length > 998) return errorReply('INVALID_REQUEST', 'A subject between 1 and 998 characters is required', 400, rid, originHeaders);
+      if (typeof input.html !== 'string' || !input.html.trim() || input.html.length > 500000) return errorReply('INVALID_REQUEST', 'A non-empty HTML body up to 500000 characters is required', 400, rid, originHeaders);
       const create = await supabase(env, 'emails', { method: 'POST', headers: { authorization, 'content-type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ user_id: user.id, recipient: input.to, subject: input.subject, html: input.html, status: 'queued' }) });
       if (!create.ok) return reply({ error: 'Could not queue email' }, 500, originHeaders);
       const [email] = await create.json();
@@ -65,8 +100,8 @@ export default {
       const payload = await sent.json();
       const update = sent.ok ? { status: 'sent', resend_id: payload.id, sent_at: new Date().toISOString() } : { status: 'failed', error_message: payload.message || 'Resend rejected the message' };
       await supabase(env, `emails?id=eq.${email.id}`, { method: 'PATCH', headers: { authorization, 'content-type': 'application/json' }, body: JSON.stringify(update) });
-      return reply({ ...email, ...update }, sent.ok ? 201 : 502, originHeaders);
+      return reply({ ...email, ...update }, sent.ok ? 201 : 502, { ...originHeaders, 'x-request-id': rid });
     }
-    return reply({ error: 'Not found' }, 404, originHeaders);
+    return errorReply('NOT_FOUND', 'Not found', 404, rid, originHeaders);
   }
 };
