@@ -105,3 +105,12 @@ The production entry point is index.html.
 - docs/operations.md — deployment smoke checks, incident triage, and rollback guidance.
 
 Schema foundations marked as planned are not automatically live product features.
+
+
+## Production implementation contract
+
+This repository is production-oriented: do not ship mock/demo/sample data, fake API success, fake authentication, simulated email delivery, or fake AI output. See `AGENTS.md` for coding/deployment-agent rules.
+
+The existing OPERAVA visual system must be preserved when extending the product. See `docs/design-system.md`.
+
+Cloudflare Workers AI is configured through the Worker `AI` binding and documented in `docs/cloudflare-ai-deployment.md`. AI integration must remain server-side and use real Workers AI inference when a feature is marked implemented.
