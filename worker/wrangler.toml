@@ -3,10 +3,16 @@ main = "src/index.js"
 compatibility_date = "2026-09-22"
 workers_dev = true
 
-# Cloudflare Workers AI binding (used by /automation/propose)
+# Production Cloudflare Workers AI binding.
+# Runtime access: env.AI
 [ai]
 binding = "AI"
 
 [vars]
-# FRONTEND_URL is set via secret or vars for CORS allowlist.
-# FRONTEND_URL = "https://maildesk.example.com"
+# Non-secret production configuration.
+# Keep the model identifier server-side so the browser cannot select arbitrary models.
+AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+
+# FRONTEND_URL is intentionally configured per deployment/environment
+# (secret or environment-specific vars) as the exact CORS allowlist.
+# Never commit service-role, Resend, webhook, or Cloudflare API secrets here.
