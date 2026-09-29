@@ -66,7 +66,7 @@ The migration set currently provides:
 - inbound/outbound message fields (0005)
 - mailbox flags plus thread/folder/attachment metadata foundations (0006)
 
-RLS protects user-owned email records. The current migration does not create profiles, folders, templates, sticky notes, boards, or attachment tables.
+RLS protects user-owned records. Migration 0006 creates thread, folder, and attachment-metadata foundation tables with RLS. It does not create profiles, templates, sticky notes, boards, an attachment Storage bucket, or live thread/folder/attachment UI workflows.
 
 ## Local checks
 
