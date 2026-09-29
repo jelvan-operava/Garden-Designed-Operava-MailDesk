@@ -51,3 +51,13 @@ Worker emits x-request-id on newly hardened routes/responses. New API errors sho
 
 ## Documentation requirement
 When implementation changes, update `docs/current-implementation.md`, `docs/api.md`, relevant security/database/operations docs, README if user-facing behavior changes, and this file in the same branch.
+
+
+## Production-only implementation contract
+This is not a mock/demo repository. Never add fake users, fake messages, fake API success, simulated provider responses, placeholder production endpoints, or disconnected controls. If a production dependency is unavailable, fail explicitly.
+
+## Design contract
+Read and obey `docs/design-system.md`. Preserve the existing OPERAVA cream/off-white garden theme, purple-orange accents, Georgia display headings, sans-serif application typography, rounded surfaces, existing navigation/information architecture, responsive behavior, and repository brand assets. Do not introduce an unrelated UI framework/theme or incidental redesign.
+
+## Cloudflare AI
+Cloudflare Workers AI is the production AI runtime. `worker/wrangler.toml` binds `AI`; Worker code accesses it as `env.AI`. The model is selected server-side with `AI_MODEL`. Read `docs/cloudflare-ai-deployment.md` before implementing/deploying AI. AI routes must use real inference, require appropriate Supabase auth, validate input/output, preserve deterministic authorization, and never directly perform irreversible actions from untrusted model output.
