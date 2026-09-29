@@ -49,17 +49,22 @@ Public:
 - POST /webhooks/resend — signed Resend webhook ingestion.
 
 Authenticated:
+- GET /me — return the validated signed-in user identity.
 - GET /emails — retrieve the signed-in user's messages.
-- POST /emails — create/send a message through Resend.
+- GET /emails/:id — retrieve one RLS-visible message.
+- POST /emails — validate and send a message through Resend.
+- PATCH /emails/:id — update read/star/archive/delete mailbox flags.
 
 The current Worker does not implement /boards/*, attachment upload routes, or an authentication proxy route.
 
 ## Database currently implemented
 
-The migration currently creates:
+The migration set currently provides:
 - emails
 - email_events
 - mailbox_status
+- inbound/outbound message fields (0005)
+- mailbox flags plus thread/folder/attachment metadata foundations (0006)
 
 RLS protects user-owned email records. The current migration does not create profiles, folders, templates, sticky notes, boards, or attachment tables.
 
@@ -88,3 +93,15 @@ When implementation changes, update llms.txt, docs/current-implementation.md, an
 login_page.html, mailbox_pages.html, and operava-maildesk-backend-stack.html are retained as historical/visual reference artifacts. They are not authoritative implementation specifications. Examples inside those files may describe architecture or routes that are not present in the current source code.
 
 The production entry point is index.html.
+
+
+## Architecture documentation
+
+- docs/architecture.md — target architecture and delivery phases.
+- docs/current-implementation.md — behavior actually implemented on the branch.
+- docs/api.md — Worker API contract.
+- docs/database.md — schema/migration ownership and compatibility.
+- docs/security.md — trust boundaries, secrets, and hardening requirements.
+- docs/operations.md — deployment smoke checks, incident triage, and rollback guidance.
+
+Schema foundations marked as planned are not automatically live product features.
