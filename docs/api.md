@@ -6,7 +6,7 @@ Base URL: deployed Cloudflare Worker URL.
 Protected routes require `Authorization: Bearer <Supabase access token>`.
 
 ## Response conventions
-JSON responses use `content-type: application/json` and include `x-request-id`. Errors use:
+JSON responses use `content-type: application/json`. Worker application responses include `x-request-id` for correlation. Errors use:
 ```json
 {"error":{"code":"INVALID_REQUEST","message":"Human-readable message","requestId":"..."}}
 ```
@@ -42,3 +42,7 @@ Public endpoint authenticated by Svix/Resend signature. Rejects stale timestamps
 
 ## Planned, not live
 Threads, folder CRUD, attachments, search, drafts API, and inbound webhook ingestion.
+
+
+## CORS
+Preflight allows GET, POST, PATCH, and OPTIONS. Allowed origins are exact matches from the comma-separated `FRONTEND_URL` configuration. Protected browser calls may send `authorization` and `content-type` headers.

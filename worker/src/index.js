@@ -42,19 +42,25 @@ async function verifyWebhook(request, body, secret) {
 export default {
   async fetch(request, env) {
     const originHeaders = cors(request, env); const rid = requestId(request);
-    if (request.method === 'OPTIONS') return new Response(null, { headers: { ...originHeaders, 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'authorization,content-type', 'access-control-max-age': '86400' } });
+    if (request.method === 'OPTIONS') return new Response(null, { headers: { ...originHeaders, 'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS', 'access-control-allow-headers': 'authorization,content-type', 'access-control-max-age': '86400' } });
     const url = new URL(request.url);
     if (url.pathname === '/health') return reply({ ok: true, requestId: rid }, 200, { ...originHeaders, 'x-request-id': rid });
 
     if (url.pathname === '/webhooks/resend' && request.method === 'POST') {
       const raw = await request.text();
-      if (!(await verifyWebhook(request, raw, env.RESEND_WEBHOOK_SECRET))) return reply({ error: 'Invalid webhook signature' }, 401);
-      const event = JSON.parse(raw); const resendId = event.data?.email_id || event.data?.email?.id || null;
+      let verified = false;
+      try { verified = await verifyWebhook(request, raw, env.RESEND_WEBHOOK_SECRET); } catch (_) { verified = false; }
+      if (!verified) return errorReply('INVALID_WEBHOOK_SIGNATURE', 'Invalid webhook signature', 401, rid);
+      let event;
+      try { event = JSON.parse(raw); } catch (_) { return errorReply('INVALID_WEBHOOK_PAYLOAD', 'Invalid webhook JSON', 400, rid); } const resendId = event.data?.email_id || event.data?.email?.id || null;
       const stored = await supabase(env, 'email_events', { method: 'POST', headers: { 'content-type': 'application/json', Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ resend_event_id: event.data?.id || request.headers.get('svix-id'), resend_id: resendId, event_type: event.type, payload: event }) }, true);
-      if (!stored.ok) return reply({ error: 'Could not store event' }, 500);
+      if (!stored.ok) return errorReply('WEBHOOK_STORE_FAILED', 'Could not store event', 500, rid);
       const status = ({ 'email.sent': 'sent', 'email.bounced': 'failed', 'email.complained': 'failed' })[event.type];
-      if (status && resendId) await supabase(env, `emails?resend_id=eq.${encodeURIComponent(resendId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status, error_message: status === 'failed' ? event.type : null, updated_at: new Date().toISOString() }) }, true);
-      return reply({ received: true });
+      if (status && resendId) {
+        const transition = await supabase(env, `emails?resend_id=eq.${encodeURIComponent(resendId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status, error_message: status === 'failed' ? event.type : null, updated_at: new Date().toISOString() }) }, true);
+        if (!transition.ok) return errorReply('WEBHOOK_STATE_UPDATE_FAILED', 'Could not apply email status event', 500, rid);
+      }
+      return reply({ received: true }, 200, { 'x-request-id': rid });
     }
 
     const user = await requireUser(request, env);
@@ -86,21 +92,26 @@ export default {
     }
     if (url.pathname === '/emails' && request.method === 'GET') {
       const response = await supabase(env, 'emails?select=*&order=created_at.desc', { headers: { authorization } });
-      return new Response(await response.text(), { status: response.status, headers: { ...JSON_HEADERS, ...originHeaders } });
+      if (!response.ok) return errorReply('DATABASE_ERROR', 'Could not load mailbox', 502, rid, originHeaders);
+      return new Response(await response.text(), { status: 200, headers: { ...JSON_HEADERS, ...originHeaders, 'x-request-id': rid } });
     }
     if (url.pathname === '/emails' && request.method === 'POST') {
-      const input = await request.json();
+      let input;
+      try { input = await request.json(); } catch (_) { return errorReply('INVALID_REQUEST', 'Invalid JSON body', 400, rid, originHeaders); }
       if (!validEmail(input.to)) return errorReply('INVALID_REQUEST', 'A valid recipient email is required', 400, rid, originHeaders);
       if (typeof input.subject !== 'string' || !input.subject.trim() || input.subject.length > 998) return errorReply('INVALID_REQUEST', 'A subject between 1 and 998 characters is required', 400, rid, originHeaders);
       if (typeof input.html !== 'string' || !input.html.trim() || input.html.length > 500000) return errorReply('INVALID_REQUEST', 'A non-empty HTML body up to 500000 characters is required', 400, rid, originHeaders);
       const create = await supabase(env, 'emails', { method: 'POST', headers: { authorization, 'content-type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ user_id: user.id, recipient: input.to, subject: input.subject, html: input.html, status: 'queued' }) });
-      if (!create.ok) return reply({ error: 'Could not queue email' }, 500, originHeaders);
+      if (!create.ok) return errorReply('EMAIL_QUEUE_FAILED', 'Could not queue email', 500, rid, originHeaders);
       const [email] = await create.json();
       const sent = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': email.id }, body: JSON.stringify({ from: env.RESEND_FROM, to: [input.to], subject: input.subject, html: input.html }) });
-      const payload = await sent.json();
-      const update = sent.ok ? { status: 'sent', resend_id: payload.id, sent_at: new Date().toISOString() } : { status: 'failed', error_message: payload.message || 'Resend rejected the message' };
-      await supabase(env, `emails?id=eq.${email.id}`, { method: 'PATCH', headers: { authorization, 'content-type': 'application/json' }, body: JSON.stringify(update) });
-      return reply({ ...email, ...update }, sent.ok ? 201 : 502, { ...originHeaders, 'x-request-id': rid });
+      let payload = {};
+      try { payload = await sent.json(); } catch (_) { payload = {}; }
+      const providerAccepted = sent.ok && typeof payload.id === 'string' && payload.id.length > 0;
+      const update = providerAccepted ? { status: 'sent', resend_id: payload.id, sent_at: new Date().toISOString() } : { status: 'failed', error_message: payload.message || (sent.ok ? 'Resend returned no message identifier' : 'Resend rejected the message') };
+      const persisted = await supabase(env, `emails?id=eq.${email.id}`, { method: 'PATCH', headers: { authorization, 'content-type': 'application/json' }, body: JSON.stringify({ ...update, updated_at: new Date().toISOString() }) });
+      if (!persisted.ok) return errorReply('EMAIL_STATE_PERSIST_FAILED', 'Provider result could not be persisted', 502, rid, originHeaders);
+      return reply({ ...email, ...update }, providerAccepted ? 201 : 502, { ...originHeaders, 'x-request-id': rid });
     }
     return errorReply('NOT_FOUND', 'Not found', 404, rid, originHeaders);
   }
