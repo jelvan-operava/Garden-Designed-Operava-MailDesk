@@ -1,153 +1,53 @@
 # OPERAVA MailDesk — LLM Implementation Reference
 
-This file is the machine-readable source of truth for coding agents working in this repository.
-
 ## Authority
+Current source code + applied migrations are authoritative. `docs/current-implementation.md` describes live behavior. `docs/architecture.md` describes target/planned architecture. Never present planned functionality as implemented.
 
-Follow the current source code and database migration. Do not invent routes, tables, UI features, integrations, or deployment workflows that are not present.
-
-## Product
-
-OPERAVA MailDesk is a secure, garden-themed internal email workspace.
-
-Brand asset: operava_exact_transparent.png
-
-## Current stack
-
-- Static HTML/CSS/JavaScript frontend
-- Supabase Auth for email/password authentication
-- Cloudflare Worker API
-- Supabase Postgres + RLS
-- Resend API for server-side email delivery
-- Signed Resend webhook ingestion
-- Cloudflare Pages for static frontend hosting
-
-## Browser routes
-
-- / redirects to /login
-- /login serves login_page.html
-- /mailbox serves mailbox.html
-- /backend serves operava-maildesk-backend-stack.html
-
-There is one login experience only. Do not add a second login form to the mailbox.
+## Stack
+Static HTML/CSS/JavaScript; Supabase Auth; Cloudflare Worker; Supabase Postgres/RLS; Resend; Cloudflare Pages.
 
 ## Authentication
-
-Supabase Auth is the only authentication authority.
-
-Login:
-1. Browser sends email/password to the Supabase Auth password token endpoint.
-2. Successful authentication returns a Supabase session.
-3. The session is stored as operava-maildesk-session.
-4. Browser redirects to /mailbox.
-
-Mailbox:
-1. /mailbox requires operava-maildesk-session.
-2. The access token is validated against Supabase Auth /auth/v1/user.
-3. Invalid or missing sessions are cleared and redirected to /login.
-4. Worker API calls use Authorization: Bearer <access_token>.
-
-Logout:
-1. The browser calls Supabase Auth logout when a token exists.
-2. The local session is removed.
-3. Browser returns to /login.
-
-The following are forbidden authentication bypasses:
-- ?auth=1
-- ?logged_in=1
-- fake local sessions
-- operava_logged_in cookies
-- /api/auth/login
-- /api/auth/logout
-
-## Frontend files
-
-- index.html — root login entry, synchronized with login_page.html
-- login_page.html — official login UI
-- mailbox.html — authenticated MailDesk UI
-- app.js — functional lightweight mailbox/API implementation
-- app.css — shared mailbox styling
-- app-config.js — public browser configuration only
-- operava_exact_transparent.png — brand logo
-
-Do not place Supabase service-role/secret keys or Resend API keys in browser files.
-
-## Worker routes
-
-- GET /health
-- POST /webhooks/resend
-- authenticated GET /emails
-- authenticated POST /emails
-
-The Worker validates the bearer token against Supabase Auth before protected routes.
-
-## Database
-
-Migration: supabase/migrations/0001_maildesk.sql
-
-Objects:
-- enum mailbox_status
-- table emails
-- table email_events
-
-RLS is enabled. User-owned email records are restricted to authenticated users.
-
-## Resend
-
-Sending is performed by the Worker. Resend webhook requests are verified with the configured signing secret.
-
-Current status mapping:
-- email.sent -> sent
-- email.bounced -> failed
-- email.complained -> failed
-
-Do not claim complete open/click/delivery synchronization.
+Supabase Auth is the only end-user authentication authority. Protected Worker calls use `Authorization: Bearer <Supabase access token>`. Do not add ADMIN_EMAIL/ADMIN_PASSWORD, fake sessions, query-string bypasses, or a parallel auth proxy.
 
 ## Browser configuration
+Browser-safe only: Supabase URL, Supabase anon/publishable key, Worker URL.
+Never expose: service-role key, Resend API key, Resend webhook secret.
 
-app-config.js contains only:
-- supabaseUrl
-- supabaseAnonKey
-- apiBaseUrl
+## Worker routes currently implemented
+- GET /health
+- POST /webhooks/resend
+- GET /me (authenticated)
+- GET /emails (authenticated)
+- GET /emails/:id (authenticated)
+- POST /emails (authenticated)
+- PATCH /emails/:id (authenticated mailbox flags)
 
-Replace the placeholders with the project's public Supabase URL, browser-safe Supabase anon/publishable key, and deployed Worker URL during deployment.
+PATCH flags: is_read, is_starred, is_archived, is_deleted.
 
-Never put:
-- Supabase service-role/secret key
-- Resend API key
-- Resend webhook secret
-in app-config.js.
+## Database
+- 0001_maildesk.sql: emails, email_events, mailbox_status, RLS, Realtime publication.
+- 0005_inbound_updates.sql: direction/from_address.
+- 0006_mailbox_foundation.sql: mailbox flags and thread/folder/attachment metadata foundations.
 
-## Cloudflare deployment
+Schema foundations do not imply live UI/API workflows.
 
-The frontend is static and requires no framework build command.
+## Resend
+Worker sends outbound mail. Signed webhook ingestion verifies HMAC/timestamp and persists events idempotently. Current explicit status transitions: email.sent -> sent; email.bounced -> failed; email.complained -> failed.
 
-Worker configuration: worker/wrangler.toml
+## Request/error conventions
+Worker emits x-request-id on newly hardened routes/responses. New API errors should use `{"error":{"code":"...","message":"...","requestId":"..."}}`. Preserve RLS as the authorization boundary.
 
-Worker secrets:
-- SUPABASE_URL
-- SUPABASE_ANON_KEY
-- SUPABASE_SERVICE_ROLE_KEY
-- RESEND_API_KEY
-- RESEND_FROM
-- RESEND_WEBHOOK_SECRET
-- FRONTEND_URL
-
-## Validation
-
-Run:
-    node --check app.js
-    node --check worker/src/index.js
-
-Do not claim an end-to-end test suite exists.
-
-## Not implemented
-
-Do not describe these as live features unless source and schema are changed:
-- boards/sticky-note workspace
-- Supabase Storage attachments
-- message threading
-- rich-text editor
+## Planned, not live
 - browser Realtime subscription
-- full delivered/opened/clicked tracking
-- GitHub Actions deployment workflow
+- production inbound ingestion route
+- thread API/UI
+- folder CRUD API/UI
+- attachment Storage/upload/download
+- full-text search
+- drafts-specific API
+- rich-text editor
+- full delivery/open/click tracking
+- comprehensive automated E2E suite
+
+## Documentation requirement
+When implementation changes, update `docs/current-implementation.md`, `docs/api.md`, relevant security/database/operations docs, README if user-facing behavior changes, and this file in the same branch.
