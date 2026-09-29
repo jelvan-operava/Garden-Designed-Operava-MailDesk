@@ -56,7 +56,10 @@ export default {
       const stored = await supabase(env, 'email_events', { method: 'POST', headers: { 'content-type': 'application/json', Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ resend_event_id: event.data?.id || request.headers.get('svix-id'), resend_id: resendId, event_type: event.type, payload: event }) }, true);
       if (!stored.ok) return errorReply('WEBHOOK_STORE_FAILED', 'Could not store event', 500, rid);
       const status = ({ 'email.sent': 'sent', 'email.bounced': 'failed', 'email.complained': 'failed' })[event.type];
-      if (status && resendId) await supabase(env, `emails?resend_id=eq.${encodeURIComponent(resendId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status, error_message: status === 'failed' ? event.type : null, updated_at: new Date().toISOString() }) }, true);
+      if (status && resendId) {
+        const transition = await supabase(env, `emails?resend_id=eq.${encodeURIComponent(resendId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status, error_message: status === 'failed' ? event.type : null, updated_at: new Date().toISOString() }) }, true);
+        if (!transition.ok) return errorReply('WEBHOOK_STATE_UPDATE_FAILED', 'Could not apply email status event', 500, rid);
+      }
       return reply({ received: true }, 200, { 'x-request-id': rid });
     }
 
@@ -89,7 +92,8 @@ export default {
     }
     if (url.pathname === '/emails' && request.method === 'GET') {
       const response = await supabase(env, 'emails?select=*&order=created_at.desc', { headers: { authorization } });
-      return new Response(await response.text(), { status: response.status, headers: { ...JSON_HEADERS, ...originHeaders, 'x-request-id': rid } });
+      if (!response.ok) return errorReply('DATABASE_ERROR', 'Could not load mailbox', 502, rid, originHeaders);
+      return new Response(await response.text(), { status: 200, headers: { ...JSON_HEADERS, ...originHeaders, 'x-request-id': rid } });
     }
     if (url.pathname === '/emails' && request.method === 'POST') {
       let input;
@@ -103,10 +107,11 @@ export default {
       const sent = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': email.id }, body: JSON.stringify({ from: env.RESEND_FROM, to: [input.to], subject: input.subject, html: input.html }) });
       let payload = {};
       try { payload = await sent.json(); } catch (_) { payload = {}; }
-      const update = sent.ok ? { status: 'sent', resend_id: payload.id, sent_at: new Date().toISOString() } : { status: 'failed', error_message: payload.message || 'Resend rejected the message' };
+      const providerAccepted = sent.ok && typeof payload.id === 'string' && payload.id.length > 0;
+      const update = providerAccepted ? { status: 'sent', resend_id: payload.id, sent_at: new Date().toISOString() } : { status: 'failed', error_message: payload.message || (sent.ok ? 'Resend returned no message identifier' : 'Resend rejected the message') };
       const persisted = await supabase(env, `emails?id=eq.${email.id}`, { method: 'PATCH', headers: { authorization, 'content-type': 'application/json' }, body: JSON.stringify({ ...update, updated_at: new Date().toISOString() }) });
       if (!persisted.ok) return errorReply('EMAIL_STATE_PERSIST_FAILED', 'Provider result could not be persisted', 502, rid, originHeaders);
-      return reply({ ...email, ...update }, sent.ok ? 201 : 502, { ...originHeaders, 'x-request-id': rid });
+      return reply({ ...email, ...update }, providerAccepted ? 201 : 502, { ...originHeaders, 'x-request-id': rid });
     }
     return errorReply('NOT_FOUND', 'Not found', 404, rid, originHeaders);
   }
