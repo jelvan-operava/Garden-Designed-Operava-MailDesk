@@ -11,6 +11,9 @@ This document defines the target architecture and explicitly separates implement
 5. Provider webhooks are authenticated, idempotent, and persisted before state transitions.
 6. Database migrations are additive and reversible where practical.
 7. Documentation changes ship with implementation changes.
+8. Production paths never substitute mocks/demos/fake success for unavailable dependencies.
+9. Existing OPERAVA design/theme is a product contract; implementation work preserves it unless an explicit redesign is approved.
+10. AI inference uses Cloudflare Workers AI through the server-side AI binding; model output never bypasses deterministic authorization or validation.
 
 ## System
 ```text
