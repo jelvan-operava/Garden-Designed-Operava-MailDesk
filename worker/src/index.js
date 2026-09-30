@@ -69,6 +69,28 @@ export default {
     if (url.pathname === '/me' && request.method === 'GET') {
       return reply({ id: user.id, email: user.email || null }, 200, { ...originHeaders, 'x-request-id': rid });
     }
+    if (url.pathname === '/ai/draft' && request.method === 'POST') {
+      let input;
+      try { input = await request.json(); } catch (_) { return errorReply('INVALID_REQUEST', 'Invalid JSON body', 400, rid, originHeaders); }
+      const instruction = typeof input.instruction === 'string' ? input.instruction.trim() : '';
+      const source = typeof input.source === 'string' ? input.source.trim() : '';
+      if (!instruction || instruction.length > 4000) return errorReply('INVALID_REQUEST', 'Instruction must be between 1 and 4000 characters', 400, rid, originHeaders);
+      if (source.length > 20000) return errorReply('INVALID_REQUEST', 'Source text must not exceed 20000 characters', 400, rid, originHeaders);
+      if (!env.AI || !env.AI_MODEL) return errorReply('AI_UNAVAILABLE', 'Workers AI is not configured', 503, rid, originHeaders);
+      try {
+        const result = await env.AI.run(env.AI_MODEL, {
+          messages: [
+            { role: 'system', content: 'You assist authenticated OPERAVA MailDesk users with drafting email text. Return only the requested draft text. Never claim an email was sent, never invent delivery status, and never issue instructions to bypass authorization or security controls.' },
+            { role: 'user', content: source ? `Instruction:\n${instruction}\n\nSource text:\n${source}` : instruction }
+          ]
+        });
+        const draft = typeof result === 'string' ? result : (result?.response || result?.result?.response || '');
+        if (typeof draft !== 'string' || !draft.trim()) return errorReply('AI_INVALID_RESPONSE', 'Workers AI returned no usable draft', 502, rid, originHeaders);
+        return reply({ draft: draft.trim(), model: env.AI_MODEL, requestId: rid }, 200, { ...originHeaders, 'x-request-id': rid });
+      } catch (_) {
+        return errorReply('AI_INFERENCE_FAILED', 'Workers AI inference failed', 503, rid, originHeaders);
+      }
+    }
     const emailId = emailIdFromPath(url.pathname);
     if (emailId && request.method === 'GET') {
       const response = await supabase(env, `emails?id=eq.${emailId}&select=*`, { headers: { authorization } });
