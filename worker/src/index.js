@@ -65,6 +65,10 @@ export default {
 
     const user = await requireUser(request, env);
     if (!user) return errorReply('AUTH_REQUIRED', 'Unauthorized', 401, rid, originHeaders);
+    if (env.API_RATE_LIMITER) {
+      const limit = await env.API_RATE_LIMITER.limit({ key: user.id });
+      if (!limit.success) return errorReply('RATE_LIMITED', 'Too many requests', 429, rid, originHeaders);
+    }
     const authorization = request.headers.get('authorization');
     if (url.pathname === '/me' && request.method === 'GET') {
       return reply({ id: user.id, email: user.email || null }, 200, { ...originHeaders, 'x-request-id': rid });
