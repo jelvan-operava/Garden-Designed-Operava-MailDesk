@@ -17,7 +17,15 @@ simple = { limit = 120, period = 60 }
 # Non-secret production configuration.
 # Keep the model identifier server-side so the browser cannot select arbitrary models.
 AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+ZEPTOMAIL_API_URL = "https://api.zeptomail.com/v1.1/email"
+ZEPTOMAIL_FROM_NAME = "OPERAVA MailDesk"
+
+# Optional Cloudflare D1 binding:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "operava-maildesk-db"
+# database_id = "your-d1-database-uuid"
 
 # FRONTEND_URL is intentionally configured per deployment/environment
 # (secret or environment-specific vars) as the exact CORS allowlist.
-# Never commit service-role, Resend, webhook, or Cloudflare API secrets here.
+# Never commit ZEPTOMAIL_API_KEY, service-role, or auth secrets here.

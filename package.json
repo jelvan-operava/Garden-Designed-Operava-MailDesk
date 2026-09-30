@@ -4,8 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check app.js && node --check worker/src/index.js",
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node --check server.js && npm run check",
+    "lint": "npm run check",
+    "check": "node --check app.js && node --check worker/src/index.js && node --check worker/src/emailService.js",
     "worker:dev": "npm --prefix worker run dev",
     "worker:deploy": "npm --prefix worker run deploy"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

@@ -1,10 +1,11 @@
 {
   "name": "operava-maildesk-worker",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check src/index.js"
+    "check": "node --check src/index.js && node --check src/emailService.js"
   },
   "devDependencies": {
     "wrangler": "^4.68.1"

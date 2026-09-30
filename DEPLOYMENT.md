@@ -15,57 +15,61 @@ Read:
 The existing OPERAVA MailDesk design/theme is authoritative. Backend, deployment, and AI changes must not silently redesign the application.
 
 ## 2. Database
-Apply migrations in order in staging first, then production:
-- `supabase/migrations/0001_maildesk.sql`
-- `supabase/migrations/0005_inbound_updates.sql`
-- `supabase/migrations/0006_mailbox_foundation.sql`
+- **Cloudflare D1 (Recommended)**:
+  Apply `d1/schema.sql`:
+  ```bash
+  npx wrangler d1 execute operava-maildesk-db --file=d1/schema.sql
+  ```
+- **Supabase (Compatibility Fallback)**:
+  Apply migrations in order:
+  - `supabase/migrations/0001_maildesk.sql`
+  - `supabase/migrations/0005_inbound_updates.sql`
+  - `supabase/migrations/0006_mailbox_foundation.sql`
+  - `supabase/migrations/0007_cloudflare_and_zeptomail.sql`
 
-Migration 0006 adds mailbox flags and schema foundations. A schema foundation is not permission to expose a fake UI for an unfinished workflow.
-
-## 3. Worker + Workers AI
-The Worker uses the Cloudflare Workers AI binding declared in `worker/wrangler.toml`:
+## 3. Worker + Workers AI + ZeptoMail + Cloudflare Auth
+The Worker uses Cloudflare Workers AI and Cloudflare Email Routing:
 ```toml
 [ai]
 binding = "AI"
 ```
-The selected model is the server-side `AI_MODEL` Wrangler variable. Worker code must call AI through `env.AI`; never expose Cloudflare AI credentials/model-control endpoints directly to the browser.
-
-Configure server-only values:
+Configure server-only secrets:
 ```bash
 cd worker
 npx wrangler login
+npx wrangler secret put ZEPTOMAIL_API_KEY
+npx wrangler secret put ZEPTOMAIL_FROM_ADDRESS
+npx wrangler secret put CLOUDFLARE_AUTH_SECRET
+npx wrangler secret put FRONTEND_URL
+# Optional fallbacks:
 npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_ANON_KEY
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM
 npx wrangler secret put RESEND_WEBHOOK_SECRET
-npx wrangler secret put FRONTEND_URL
 npx wrangler deploy
 ```
 
-`FRONTEND_URL` may be a comma-separated exact-origin allowlist. Do not commit production secret values.
+## 4. Cloudflare Email Routing (Inbound)
+In the Cloudflare Dashboard under Email Routing:
+1. Enable Email Routing on your domain.
+2. Under "Email Workers", route incoming emails (e.g. `*@yourdomain.com` or `inbox@yourdomain.com`) to the deployed `operava-maildesk-api` Worker.
+3. The Worker's `email(message, env, ctx)` handler automatically receives incoming emails, parses sender/subject/body, and stores them in the mailbox.
 
-Workers AI binding/model deployment and verification are documented in `docs/cloudflare-ai-deployment.md`.
+## 5. Cloudflare Pages
+Deploy static assets to Cloudflare Pages.
+Configure `app-config.js` to point `apiBaseUrl` and `supabaseUrl` to your deployed Worker origin.
 
-## 4. Cloudflare Pages
-Deploy the existing static frontend without substituting a starter/template UI. Configure `app-config.js` with browser-safe production values only:
-- Supabase project URL
-- Supabase anon/publishable key
-- deployed Worker URL
+## 6. ZeptoMail (Outbound)
+1. In your Zoho ZeptoMail account, add and verify your sending domain (SPF, DKIM, CNAME).
+2. Generate an "Agent Send Mail Token" (API Key).
+3. Set `ZEPTOMAIL_API_KEY` in Wrangler secrets.
+4. Set `ZEPTOMAIL_FROM_ADDRESS` (e.g. `mail@yourdomain.com`).
 
-Never place service-role, Resend, webhook, or Cloudflare secret tokens in browser assets.
-
-## 5. Resend
-Use a verified production sender/domain and configure:
-`POST <WORKER_URL>/webhooks/resend`
-
-The Worker verifies Svix/Resend signatures using `RESEND_WEBHOOK_SECRET`. Do not bypass webhook verification in production.
-
-## 6. Validation
+## 7. Validation
 ```bash
-node --check app.js
-node --check worker/src/index.js
+npm run check
 ```
 Then run the staging smoke checklist in `docs/operations.md`. For every implemented AI route, perform a real Workers AI inference smoke test. Syntax checks are not E2E tests.
 

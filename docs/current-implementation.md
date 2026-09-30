@@ -5,24 +5,49 @@ This is the source-of-truth description of behavior implemented in source code o
 
 ## Stack
 - Static HTML/CSS/JavaScript frontend on Cloudflare Pages
-- Supabase Auth email/password authentication
-- Cloudflare Worker API
-- Supabase Postgres + Row Level Security
-- Resend outbound email
-- Signed Resend webhook ingestion
+- Cloudflare Native Auth (Cloudflare Access headers + Web Crypto PBKDF2/HMAC-SHA256 JWT auth on Worker) + Supabase Auth fallback
+- Cloudflare Worker API & Email Routing
+- Cloudflare D1 Database (`d1/schema.sql`) + Supabase Postgres compatibility
+- ZeptoMail REST API outbound delivery + Resend fallback
+- Cloudflare Email Routing inbound email ingestion (`async email(message, env, ctx)`) & inbound webhook
 - Authenticated Cloudflare Workers AI drafting
+
+## Frontend UI & Architecture
+- **Single Page Application**: `index.html` serves as the primary SPA host containing the unified production UI (Inter + Instrument Serif, warm cream `#f8f5e9` and off-white `#fcfaf4`, rounded card surfaces, purple-to-orange gradient `#8B5CF6` -> `#FB923C`).
+- **Complete Views Implemented**:
+  - Sign-in with real credential authentication (`POST /auth/v1/token`), password reset modal, show/hide password toggle, and enterprise SSO triggers.
+  - MailDesk workspace: Fixed desktop sidebar, mobile drawer bottom sheet (`#bottom-sheet`), live-sync inbox (`#email-list`), real-time search filtering (`#search-input`), Sent folder (`#sent-view`), Trash folder (`#trash-view` with Empty Trash), and Profile Settings (`#profile-view`).
+  - Production Email Composer Modal (`#composer`): Connected to real `POST /emails` with recipient validation, subject, and HTML editor.
+  - Raw HTML Viewer Modal (`#raw-html-modal`): Real-time sandboxed iframe preview, syntax-highlighted raw HTML `<pre>`, and one-click copy to clipboard.
+  - AI HTML Generator (`#templates-view`): Connected to real `POST /ai/draft` (Cloudflare Workers AI), loads generated HTML directly into editor with live iframe preview.
+- **Removed Artifacts**: Old redirect files (`login_page.html`, `mailbox_pages.html`, `dashboard.html`, `operava-maildesk-backend-stack.html`) removed from the repository.
 
 ## Worker routes
 | Method | Route | Authentication | Purpose |
 | --- | --- | --- | --- |
-| GET | /health | Public | Health/request correlation |
-| POST | /webhooks/resend | Signed webhook | Persist provider event and supported status transition |
-| GET | /me | Supabase user | Return validated user identity |
-| POST | /ai/draft | Supabase user | Generate draft text with Workers AI; no mail/data mutation |
-| GET | /emails | Supabase user | List RLS-visible emails |
-| GET | /emails/:id | Supabase user | Read one RLS-visible email |
-| POST | /emails | Supabase user | Validate, create, and send email through Resend |
-| PATCH | /emails/:id | Supabase user | Update supported mailbox flags |
+| GET | /health | Public | Health, delivery provider, and request correlation |
+| POST | /auth/v1/token | Public | Authenticate user with Cloudflare Worker Native Auth (PBKDF2/JWT) |
+| GET | /auth/v1/user | Cloudflare user | Validate token and return user identity |
+| POST | /inbound/email | Public / Webhook | Receive inbound emails via webhook or Cloudflare Email Routing HTTP |
+| POST | /webhooks/resend | Signed webhook | Persist Resend provider event and supported status transition |
+| GET | /me | Cloudflare user | Return validated user identity |
+| POST | /ai/draft | Cloudflare user | Generate draft text with Workers AI; no mail/data mutation |
+| GET | /emails | Cloudflare user | List emails visible to authenticated user |
+| GET | /emails/:id | Cloudflare user | Read one email |
+| POST | /emails | Cloudflare user | Validate, create, and send email through ZeptoMail (or Resend fallback) |
+| PATCH | /emails/:id | Cloudflare user | Update supported mailbox flags |
+
+## Cloudflare Email Routing Handler
+`async email(message, env, ctx)` receives inbound emails directly from Cloudflare Email Routing, parses MIME headers and body, stores inbound email records (`direction: 'inbound'`), and writes to `email_events`.
+
+## Authentication
+Cloudflare Auth is supported via:
+1. Cloudflare Access Zero Trust (`Cf-Access-Authenticated-User-Email` header)
+2. Cloudflare Worker Native Auth (`/auth/v1/token` issuing HMAC-SHA256 JWT signed with `CLOUDFLARE_AUTH_SECRET`)
+3. Supabase Auth fallback when `SUPABASE_URL` is configured.
+
+## Outbound Email
+`POST /emails` delivers messages using ZeptoMail REST API (`https://api.zeptomail.com/v1.1/email`) via `ZEPTOMAIL_API_KEY` and `ZEPTOMAIL_FROM_ADDRESS`, with Resend fallback if configured. Missing provider configuration returns structured 503 error.
 
 PATCH supports `is_read`, `is_starred`, `is_archived`, and `is_deleted` after migration 0006.
 

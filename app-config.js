@@ -1,7 +1,7 @@
-// Public browser configuration only. Never place service-role, secret, or Resend API keys here.
+// Public browser configuration only. Never place service-role, secret, or provider API keys here.
 window.OPERAVA_CONFIG = {
-  supabaseUrl: 'https://hyzjlznyfjtbehsmxgaq.supabase.co',
-  supabaseAnonKey: 'sb_publishable_EkHGEYKWcrhemFS1dNfbfw_AIEPrGtt',
-  // Set to your Cloudflare Worker URL (must respond to GET /health and POST /auth/login)
-  apiBaseUrl: 'https://YOUR_WORKER.workers.dev'
+  // Routes authentication and API requests directly to the Cloudflare Worker
+  supabaseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+  supabaseAnonKey: 'operava_cf_publishable_token',
+  apiBaseUrl: typeof window !== 'undefined' ? window.location.origin : ''
 };

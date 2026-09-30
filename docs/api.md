@@ -3,7 +3,7 @@
 Base URL: deployed Cloudflare Worker URL.
 
 ## Authentication
-Protected routes require `Authorization: Bearer <Supabase access token>`.
+Protected routes require `Authorization: Bearer <token>` (Cloudflare Worker JWT or Supabase access token) or Cloudflare Access headers (`Cf-Access-Authenticated-User-Email`).
 
 ## Response conventions
 JSON responses use `content-type: application/json`. Worker application responses include `x-request-id` for correlation. Errors use:
@@ -12,10 +12,20 @@ JSON responses use `content-type: application/json`. Worker application response
 ```
 
 ## GET /health
-Public. Returns service health.
+Public. Returns service health, active delivery provider (ZeptoMail/Resend), inbound mechanism (Cloudflare Email Routing), and auth provider (Cloudflare).
+
+## POST /auth/v1/token (or /auth/token)
+Public. Body: `{"email":"user@example.com","password":"..."}`.
+Authenticates or auto-provisions user on Cloudflare with PBKDF2 hash, returning signed JWT bearer token.
+
+## GET /auth/v1/user
+Authenticated. Validates bearer token and returns current user `{ "id": "...", "email": "..." }`.
+
+## POST /inbound/email (or /webhooks/inbound)
+Inbound email ingestion endpoint for Cloudflare Email Routing HTTP webhooks. Accepts `{ from, to, subject, html, text }` and creates an inbound email record.
 
 ## GET /me
-Authenticated. Returns the validated Supabase user's id and email.
+Authenticated. Returns the validated user's id and email.
 
 ## POST /ai/draft
 Authenticated. Generates draft text through the configured Cloudflare Workers AI binding. Body:
