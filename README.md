@@ -11,6 +11,7 @@ OPERAVA MailDesk is a lightweight, garden-themed email workspace for authenticat
 - Database: Supabase Postgres with Row Level Security
 - Email delivery: Resend API, called server-side by the Worker
 - Delivery events: signed Resend webhook ingestion into email_events
+- AI drafting: authenticated Cloudflare Workers AI inference through the Worker; AI output does not send or mutate mail
 - Mailbox: list/filter messages and send new messages
 - Configuration: browser receives only public Supabase URL/anon key and Worker URL
 - Brand asset: operava_exact_transparent.png
@@ -54,6 +55,7 @@ Authenticated:
 - GET /emails/:id — retrieve one RLS-visible message.
 - POST /emails — validate and send a message through Resend.
 - PATCH /emails/:id — update read/star/archive/delete mailbox flags.
+- POST /ai/draft — generate draft text through authenticated Workers AI inference.
 
 The current Worker does not implement /boards/*, attachment upload routes, or an authentication proxy route.
 
