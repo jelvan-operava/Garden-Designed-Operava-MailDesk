@@ -8,6 +8,11 @@ workers_dev = true
 [ai]
 binding = "AI"
 
+[[ratelimits]]
+name = "API_RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+
 [vars]
 # Non-secret production configuration.
 # Keep the model identifier server-side so the browser cannot select arbitrary models.
