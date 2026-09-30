@@ -69,6 +69,19 @@ export default {
     if (url.pathname === '/me' && request.method === 'GET') {
       return reply({ id: user.id, email: user.email || null }, 200, { ...originHeaders, 'x-request-id': rid });
     }
+    if (url.pathname === '/notifications' && request.method === 'GET') {
+      const response = await supabase(env, 'email_events?select=resend_event_id,resend_id,event_type,received_at,payload&order=received_at.desc&limit=100', { headers: { authorization } });
+      if (!response.ok) return errorReply('DATABASE_ERROR', 'Could not load delivery events', 502, rid, originHeaders);
+      const rows = await response.json();
+      return reply(rows.map((event) => ({
+        id: event.resend_event_id,
+        kind: event.event_type,
+        event_type: event.event_type,
+        title: event.event_type,
+        body: event.resend_id ? `Provider message ${event.resend_id}` : '',
+        created_at: event.received_at
+      })), 200, { ...originHeaders, 'x-request-id': rid });
+    }
     if (url.pathname === '/ai/draft' && request.method === 'POST') {
       let input;
       try { input = await request.json(); } catch (_) { return errorReply('INVALID_REQUEST', 'Invalid JSON body', 400, rid, originHeaders); }
