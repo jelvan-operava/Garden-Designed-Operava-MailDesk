@@ -17,12 +17,16 @@ Never expose: service-role key, Resend API key, Resend webhook secret.
 - GET /health
 - POST /webhooks/resend
 - GET /me (authenticated)
+- POST /ai/draft (authenticated Workers AI drafting; no mail/data mutation)
 - GET /emails (authenticated)
 - GET /emails/:id (authenticated)
 - POST /emails (authenticated)
 - PATCH /emails/:id (authenticated mailbox flags)
 
 PATCH flags: is_read, is_starred, is_archived, is_deleted.
+
+## AI drafting
+POST /ai/draft uses the real `env.AI` Workers AI binding and server-side `AI_MODEL`. It validates input sizes and returns draft text only. It must never claim mail was sent or perform irreversible actions. AI provider/binding failures fail explicitly.
 
 ## Database
 - 0001_maildesk.sql: emails, email_events, mailbox_status, RLS, Realtime publication.
