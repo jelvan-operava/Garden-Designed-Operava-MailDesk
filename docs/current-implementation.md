@@ -10,6 +10,7 @@ This is the source-of-truth description of behavior implemented in source code o
 - Supabase Postgres + Row Level Security
 - Resend outbound email
 - Signed Resend webhook ingestion
+- Authenticated Cloudflare Workers AI drafting
 
 ## Worker routes
 | Method | Route | Authentication | Purpose |
@@ -17,6 +18,7 @@ This is the source-of-truth description of behavior implemented in source code o
 | GET | /health | Public | Health/request correlation |
 | POST | /webhooks/resend | Signed webhook | Persist provider event and supported status transition |
 | GET | /me | Supabase user | Return validated user identity |
+| POST | /ai/draft | Supabase user | Generate draft text with Workers AI; no mail/data mutation |
 | GET | /emails | Supabase user | List RLS-visible emails |
 | GET | /emails/:id | Supabase user | Read one RLS-visible email |
 | POST | /emails | Supabase user | Validate, create, and send email through Resend |
@@ -33,6 +35,9 @@ The browser authenticates directly with Supabase Auth and sends the access token
 - 0006: mailbox flags plus thread/folder/attachment metadata foundations.
 
 Threads, folders, and attachment tables are foundations only; their UI/API workflows are still planned.
+
+## AI drafting
+`POST /ai/draft` accepts a required `instruction` (1-4000 characters) and optional `source` text (up to 20000 characters). It calls the server-side Workers AI binding using `AI_MODEL` and returns draft text only. It cannot send email, change mailbox state, or bypass RLS. Missing bindings/provider failures return structured errors rather than fake output.
 
 ## Email lifecycle
 POST /emails validates the recipient, subject, and body, inserts a queued record, calls Resend with the email UUID as idempotency key, then stores success/failure state. The webhook stores signed provider events idempotently. Current status mapping explicitly handles email.sent, email.bounced, and email.complained.
