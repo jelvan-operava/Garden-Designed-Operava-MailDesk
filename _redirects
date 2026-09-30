@@ -1,5 +1,7 @@
-/              /login.html   200
-/login         /login.html   200
-/login/        /login.html   200
-/mailbox       /mailbox.html 200
-/mailbox/      /mailbox.html 200
+/              /index.html   200
+/login         /index.html   200
+/login/        /index.html   200
+/mailbox       /index.html   200
+/mailbox/      /index.html   200
+/dashboard     /index.html   200
+/*             /index.html   200

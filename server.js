@@ -16,8 +16,8 @@ const ALT_PORT = process.env.PORT && Number(process.env.PORT) !== 3000 ? Number(
 const HOST = process.env.HOST || '0.0.0.0';
 
 const env = {
-  SUPABASE_URL: process.env.SUPABASE_URL || 'https://hyzjlznyfjtbehsmxgaq.supabase.co',
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || 'sb_publishable_EkHGEYKWcrhemFS1dNfbfw_AIEPrGtt',
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   RESEND_FROM: process.env.RESEND_FROM || '',
@@ -143,29 +143,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// HTML Routes - SPA host (ensure full app with both auth and mailbox views is served)
+app.get(['/', '/index.html', '/login', '/login.html', '/mailbox', '/mailbox.html', '/dashboard'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Static assets
 app.use(express.static(__dirname));
-
-// HTML Routes - SPA host
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/index.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/mailbox', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
 
 // Fallback to index.html for any other non-API GET request
 app.use((req, res) => {

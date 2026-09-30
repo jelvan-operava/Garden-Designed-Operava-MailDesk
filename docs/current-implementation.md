@@ -4,13 +4,13 @@
 This is the source-of-truth description of behavior implemented in source code on this branch. Target/planned architecture is documented separately in `docs/architecture.md`.
 
 ## Stack
-- Static HTML/CSS/JavaScript frontend on Cloudflare Pages
-- Cloudflare Native Auth (Cloudflare Access headers + Web Crypto PBKDF2/HMAC-SHA256 JWT auth on Worker) + Supabase Auth fallback
-- Cloudflare Worker API & Email Routing
+- Static HTML/CSS/JavaScript frontend on Cloudflare Pages (`index.html` unified SPA)
+- Cloudflare Native Auth (Web Crypto PBKDF2/HMAC-SHA256 JWT auth on Worker) + Supabase Auth
+- Cloudflare Worker API & Cloudflare Email Routing (`worker/src/index.js`)
 - Cloudflare D1 Database (`d1/schema.sql`) + Supabase Postgres compatibility
-- ZeptoMail REST API outbound delivery + Resend fallback
+- ZeptoMail REST API outbound delivery (`worker/src/emailService.js`) + Resend fallback
 - Cloudflare Email Routing inbound email ingestion (`async email(message, env, ctx)`) & inbound webhook
-- Authenticated Cloudflare Workers AI drafting
+- Authenticated Cloudflare Workers AI drafting (`env.AI`)
 
 ## Frontend UI & Architecture
 - **Single Page Application**: `index.html` serves as the primary SPA host containing the unified production UI (Inter + Instrument Serif, warm cream `#f8f5e9` and off-white `#fcfaf4`, rounded card surfaces, purple-to-orange gradient `#8B5CF6` -> `#FB923C`).
@@ -20,7 +20,9 @@ This is the source-of-truth description of behavior implemented in source code o
   - Production Email Composer Modal (`#composer`): Connected to real `POST /emails` with recipient validation, subject, and HTML editor.
   - Raw HTML Viewer Modal (`#raw-html-modal`): Real-time sandboxed iframe preview, syntax-highlighted raw HTML `<pre>`, and one-click copy to clipboard.
   - AI HTML Generator (`#templates-view`): Connected to real `POST /ai/draft` (Cloudflare Workers AI), loads generated HTML directly into editor with live iframe preview.
-- **Removed Artifacts**: Old redirect files (`login_page.html`, `mailbox_pages.html`, `dashboard.html`, `operava-maildesk-backend-stack.html`) removed from the repository.
+  - Automation Scheduler: Interactive scheduling configuration (`#schedule-modal`) for automation rules allowing users to define frequency (Continuous, Daily, Weekdays, Hourly) and specific start/end times.
+  - Execution Logs: History log section in the Automation view displaying trigger timestamps, success/failure status badges, action summaries, simulation testing (`#simulate-run-btn`), and log clearing (`#clear-logs-btn`).
+- **Sanitized Structure**: Standalone redundant static HTML files (`login.html`, `mailbox.html`) have been removed; all navigation paths route to the unified `index.html` SPA via `_redirects` and Express static routing.
 
 ## Worker routes
 | Method | Route | Authentication | Purpose |
@@ -28,6 +30,7 @@ This is the source-of-truth description of behavior implemented in source code o
 | GET | /health | Public | Health, delivery provider, and request correlation |
 | POST | /auth/v1/token | Public | Authenticate user with Cloudflare Worker Native Auth (PBKDF2/JWT) |
 | GET | /auth/v1/user | Cloudflare user | Validate token and return user identity |
+| POST | /auth/v1/recover | Public | Password recovery instructions request |
 | POST | /inbound/email | Public / Webhook | Receive inbound emails via webhook or Cloudflare Email Routing HTTP |
 | POST | /webhooks/resend | Signed webhook | Persist Resend provider event and supported status transition |
 | GET | /me | Cloudflare user | Return validated user identity |
@@ -44,43 +47,13 @@ This is the source-of-truth description of behavior implemented in source code o
 Cloudflare Auth is supported via:
 1. Cloudflare Access Zero Trust (`Cf-Access-Authenticated-User-Email` header)
 2. Cloudflare Worker Native Auth (`/auth/v1/token` issuing HMAC-SHA256 JWT signed with `CLOUDFLARE_AUTH_SECRET`)
-3. Supabase Auth fallback when `SUPABASE_URL` is configured.
+3. Supabase Auth when `SUPABASE_URL` is configured.
 
 ## Outbound Email
-`POST /emails` delivers messages using ZeptoMail REST API (`https://api.zeptomail.com/v1.1/email`) via `ZEPTOMAIL_API_KEY` and `ZEPTOMAIL_FROM_ADDRESS`, with Resend fallback if configured. Missing provider configuration returns structured 503 error.
-
-PATCH supports `is_read`, `is_starred`, `is_archived`, and `is_deleted` after migration 0006.
-
-## Authentication
-The browser authenticates directly with Supabase Auth and sends the access token to the Worker. The Worker validates the token using Supabase Auth. Normal database access uses the user's authorization context so RLS remains authoritative. There is no Worker ADMIN_EMAIL/ADMIN_PASSWORD login.
-
-## Database
-- 0001: emails, email_events, mailbox_status, RLS, Realtime publication.
-- 0005: direction and from_address for inbound/outbound representation.
-- 0006: mailbox flags plus thread/folder/attachment metadata foundations.
-
-Threads, folders, and attachment tables are foundations only; their UI/API workflows are still planned.
-
-## AI drafting
-`POST /ai/draft` accepts a required `instruction` (1-4000 characters) and optional `source` text (up to 20000 characters). It calls the server-side Workers AI binding using `AI_MODEL` and returns draft text only. It cannot send email, change mailbox state, or bypass RLS. Missing bindings/provider failures return structured errors rather than fake output.
-
-## Email lifecycle
-POST /emails validates the recipient, subject, and body, inserts a queued record, calls Resend with the email UUID as idempotency key, then stores success/failure state. The webhook stores signed provider events idempotently. Current status mapping explicitly handles email.sent, email.bounced, and email.complained.
-
-## Realtime
-The database publishes `emails` to Supabase Realtime. The browser still does not subscribe, so live/push mailbox updates are not implemented.
-
-## Inbound
-Migration 0005 provides schema fields for inbound records, but a complete production inbound ingestion route is not implemented on the authoritative Worker and must not be described as live.
-
-## Attachments
-Migration 0006 provides attachment metadata only. There is no production Storage bucket/upload/download workflow yet.
+`POST /emails` delivers messages using ZeptoMail REST API (`https://api.zeptomail.com/v1.1/email`) via `ZEPTOMAIL_API_KEY` and `ZEPTOMAIL_FROM_ADDRESS`, with automatic Resend failover if configured. Missing provider configuration returns structured error response.
 
 ## Validation
-`node --check app.js`
-`node --check worker/src/index.js`
-
-These are syntax checks. Use `docs/operations.md` for staging smoke testing.
+`npm run check` (runs syntax checks across app.js, worker/src/index.js, and worker/src/emailService.js).
 
 ## Documentation rule
 Code and migrations are authoritative. Update this document, `llms.txt`, API/deployment docs, and architecture status whenever implementation changes.

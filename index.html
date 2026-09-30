@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OPERAVA MailDesk</title>
-  <meta name="description" content="A minimal workspace for teams that move fast. Secure, light, and built for clarity.">
+  <meta name="description" content="Garden-themed email workspace with mailbox management, email composition, and delivery tracking.">
   <meta property="og:title" content="OPERAVA MailDesk">
-  <meta property="og:description" content="A minimal workspace for teams that move fast. Secure, light, and built for clarity.">
+  <meta property="og:description" content="Garden-themed email workspace with mailbox management, email composition, and delivery tracking.">
   <link rel="stylesheet" href="/app.css">
   <script src="/app-config.js"></script>
 </head>
@@ -478,8 +478,8 @@
                 New Rule
               </button>
             </div>
-            <div class="grid gap-2.5">
-              <div class="rounded-[14px] border p-4 flex items-center justify-between bg-white border-[#e7e5d8] shadow-sm overflow-hidden max-w-full">
+             <div class="grid gap-2.5">
+              <div class="rounded-[14px] border p-4 flex items-center justify-between bg-white border-[#e7e5d8] shadow-sm overflow-hidden max-w-full automation-rule-card" data-rule-id="rule-1" data-rule-name="Auto-archive newsletters" data-frequency="daily" data-start="09:00" data-end="18:00">
                 <div class="min-w-0 overflow-hidden">
                   <div class="flex items-center gap-2">
                     <div class="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0 bg-[#8B5CF6]/10 text-[#8B5CF6]">
@@ -492,14 +492,19 @@
                     <span class="px-2 h-5 rounded-full border text-[11px] flex items-center bg-[#f8f5e9] border-[#e7e5d8]">IF from contains newsletter</span>
                     <span>→</span>
                     <span class="px-2 h-5 rounded-full border text-[11px] flex items-center bg-[#f8f5e9] border-[#e7e5d8]">Move to Archive</span>
+                    <span class="schedule-badge px-2 h-5 rounded-full border text-[11px] flex items-center gap-1 bg-[#8B5CF6]/5 border-[#8B5CF6]/20 text-[#8B5CF6] font-medium">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span class="schedule-text">Daily (09:00 - 18:00)</span>
+                    </span>
                   </div>
                 </div>
-                <button type="button" class="w-8 h-8 rounded-[8px] border flex items-center justify-center border-[#e7e5d8] hover:bg-[#f8f5e9] shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                <button type="button" class="edit-schedule-btn h-[32px] px-3 rounded-[8px] border text-[11px] font-medium flex items-center gap-1.5 border-[#e7e5d8] hover:bg-[#f8f5e9] text-[#555] shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Schedule
                 </button>
               </div>
 
-              <div class="rounded-[14px] border p-4 flex items-center justify-between bg-white border-[#e7e5d8] shadow-sm overflow-hidden max-w-full">
+              <div class="rounded-[14px] border p-4 flex items-center justify-between bg-white border-[#e7e5d8] shadow-sm overflow-hidden max-w-full automation-rule-card" data-rule-id="rule-2" data-rule-name="Star from founders" data-frequency="continuous" data-start="00:00" data-end="23:59">
                 <div class="min-w-0 overflow-hidden">
                   <div class="flex items-center gap-2">
                     <div class="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0 bg-[#8B5CF6]/10 text-[#8B5CF6]">
@@ -512,14 +517,19 @@
                     <span class="px-2 h-5 rounded-full border text-[11px] flex items-center bg-[#f8f5e9] border-[#e7e5d8]">IF from in founders list</span>
                     <span>→</span>
                     <span class="px-2 h-5 rounded-full border text-[11px] flex items-center bg-[#f8f5e9] border-[#e7e5d8]">Star + Notify</span>
+                    <span class="schedule-badge px-2 h-5 rounded-full border text-[11px] flex items-center gap-1 bg-[#8B5CF6]/5 border-[#8B5CF6]/20 text-[#8B5CF6] font-medium">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span class="schedule-text">Continuous (24/7)</span>
+                    </span>
                   </div>
                 </div>
-                <button type="button" class="w-8 h-8 rounded-[8px] border flex items-center justify-center border-[#e7e5d8] hover:bg-[#f8f5e9] shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                <button type="button" class="edit-schedule-btn h-[32px] px-3 rounded-[8px] border text-[11px] font-medium flex items-center gap-1.5 border-[#e7e5d8] hover:bg-[#f8f5e9] text-[#555] shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Schedule
                 </button>
               </div>
 
-              <div class="rounded-[14px] border p-4 flex items-center justify-between bg-white border-[#e7e5d8] shadow-sm overflow-hidden max-w-full">
+               <div class="rounded-[14px] border p-4 flex items-center justify-between bg-white border-[#e7e5d8] shadow-sm overflow-hidden max-w-full automation-rule-card" data-rule-id="rule-3" data-rule-name="Trash old promos" data-frequency="weekdays" data-start="01:00" data-end="05:00">
                 <div class="min-w-0 overflow-hidden">
                   <div class="flex items-center gap-2">
                     <div class="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0 bg-[#f0ede3] text-[#999]">
@@ -532,11 +542,82 @@
                     <span class="px-2 h-5 rounded-full border text-[11px] flex items-center bg-[#f8f5e9] border-[#e7e5d8]">IF older than 30d + promo tag</span>
                     <span>→</span>
                     <span class="px-2 h-5 rounded-full border text-[11px] flex items-center bg-[#f8f5e9] border-[#e7e5d8]">Move to Trash</span>
+                    <span class="schedule-badge px-2 h-5 rounded-full border text-[11px] flex items-center gap-1 bg-[#8B5CF6]/5 border-[#8B5CF6]/20 text-[#8B5CF6] font-medium">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span class="schedule-text">Weekdays (01:00 - 05:00)</span>
+                    </span>
                   </div>
                 </div>
-                <button type="button" class="w-8 h-8 rounded-[8px] border flex items-center justify-center border-[#e7e5d8] hover:bg-[#f8f5e9] shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                <button type="button" class="edit-schedule-btn h-[32px] px-3 rounded-[8px] border text-[11px] font-medium flex items-center gap-1.5 border-[#e7e5d8] hover:bg-[#f8f5e9] text-[#555] shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Schedule
                 </button>
+              </div>
+            </div>
+
+            <!-- Execution Logs Section -->
+            <div class="mt-8">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <h2 class="font-serif text-[16px] font-medium tracking-[-0.01em]">Execution Logs</h2>
+                  <span id="log-count-badge" class="text-[11px] px-2 h-5 rounded-full bg-[#f0ede3] text-[#555] border border-[#e7e5d8] flex items-center font-medium">3 entries</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="simulate-run-btn" class="h-[30px] px-3 rounded-[8px] border bg-white border-[#e7e5d8] hover:bg-[#f8f5e9] text-[11px] font-medium text-[#333] flex items-center gap-1.5 shadow-sm">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Simulate Run
+                  </button>
+                  <button type="button" id="clear-logs-btn" class="h-[30px] px-3 rounded-[8px] border bg-white border-[#e7e5d8] hover:bg-[#f8f5e9] text-[11px] font-medium text-[#666] flex items-center gap-1.5">
+                    Clear Logs
+                  </button>
+                </div>
+              </div>
+
+              <div id="execution-logs-container" class="rounded-[14px] border bg-white border-[#e7e5d8] shadow-sm overflow-hidden divide-y divide-[#f2efe4]">
+                <!-- Log Item 1 -->
+                <div class="p-3.5 flex items-center justify-between text-[12px] gap-3 log-item">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <div class="min-w-0">
+                      <div class="font-medium text-[#111827] truncate">Auto-archive newsletters</div>
+                      <div class="text-[11px] text-[#777] truncate">Successfully processed and archived 4 newsletter emails</div>
+                    </div>
+                  </div>
+                  <div class="text-[11px] text-[#999] shrink-0 text-right">
+                    <div>Today, 08:30 AM</div>
+                    <span class="text-emerald-600 font-medium text-[10px]">SUCCESS</span>
+                  </div>
+                </div>
+
+                <!-- Log Item 2 -->
+                <div class="p-3.5 flex items-center justify-between text-[12px] gap-3 log-item">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <div class="min-w-0">
+                      <div class="font-medium text-[#111827] truncate">Star from founders</div>
+                      <div class="text-[11px] text-[#777] truncate">Starred incoming email from founder@startup.io</div>
+                    </div>
+                  </div>
+                  <div class="text-[11px] text-[#999] shrink-0 text-right">
+                    <div>Today, 07:15 AM</div>
+                    <span class="text-emerald-600 font-medium text-[10px]">SUCCESS</span>
+                  </div>
+                </div>
+
+                <!-- Log Item 3 -->
+                <div class="p-3.5 flex items-center justify-between text-[12px] gap-3 log-item">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                    <div class="min-w-0">
+                      <div class="font-medium text-[#111827] truncate">Trash old promos</div>
+                      <div class="text-[11px] text-[#777] truncate">Skipped: outside scheduled weekday time window (01:00 - 05:00)</div>
+                    </div>
+                  </div>
+                  <div class="text-[11px] text-[#999] shrink-0 text-right">
+                    <div>Yesterday, 11:45 PM</div>
+                    <span class="text-red-500 font-medium text-[10px]">SKIPPED / FAILED</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -902,6 +983,58 @@
           <button type="button" id="raw-close-btn" class="h-[32px] px-4 rounded-[10px] bg-[#111] text-white text-[11px] font-medium">Close</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Automation Schedule Modal -->
+  <div id="schedule-modal" class="hidden fixed inset-0 z-[70] items-center justify-center p-4">
+    <div class="absolute inset-0 bg-[#1a1a1a]/20 backdrop-blur-[6px]" id="schedule-modal-backdrop"></div>
+    <div class="relative w-full max-w-[420px] bg-white rounded-[20px] border border-[#e7e5d8] shadow-[0_16px_48px_rgba(0,0,0,0.12)] p-6 min-w-0">
+      <button type="button" id="close-schedule-modal" class="absolute top-4 right-4 w-8 h-8 grid place-items-center rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#6b7280] transition-colors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style="background: linear-gradient(135deg, #8B5CF6 0%, #FB923C 100%);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <h3 id="schedule-modal-title" class="text-[17px] font-semibold text-[#111827] tracking-[-0.01em]">Configure Schedule</h3>
+      <p id="schedule-modal-subtitle" class="text-[13px] text-[#6b7280] mt-1 leading-[1.5]">Define active hours, frequency, or run intervals for this automation rule.</p>
+      
+      <form id="schedule-form" class="mt-5 space-y-4">
+        <input type="hidden" id="schedule-rule-id" value="">
+        <div class="space-y-1.5">
+          <label for="schedule-frequency" class="text-[11px] font-medium uppercase tracking-[0.04em] text-[#6b7280]">Frequency</label>
+          <select id="schedule-frequency" class="w-full h-[42px] px-3 rounded-xl border border-[#e7e5d8] bg-[#fcfcfb] text-[13px] text-[#111827] outline-none focus:bg-white focus:border-[#d6d3c8] focus:ring-4 focus:ring-[#f0ede1]">
+            <option value="continuous">Continuous (24/7)</option>
+            <option value="daily">Daily (Specific Hours)</option>
+            <option value="weekdays">Weekdays (Mon-Fri)</option>
+            <option value="hourly">Hourly Interval</option>
+          </select>
+        </div>
+
+        <div id="schedule-time-fields" class="grid grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label for="schedule-start-time" class="text-[11px] font-medium uppercase tracking-[0.04em] text-[#6b7280]">Start Time</label>
+            <input type="time" id="schedule-start-time" value="09:00" class="w-full h-[42px] px-3 rounded-xl border border-[#e7e5d8] bg-[#fcfcfb] text-[13px] text-[#111827] outline-none focus:bg-white focus:border-[#d6d3c8] focus:ring-4 focus:ring-[#f0ede1]">
+          </div>
+          <div class="space-y-1.5">
+            <label for="schedule-end-time" class="text-[11px] font-medium uppercase tracking-[0.04em] text-[#6b7280]">End Time</label>
+            <input type="time" id="schedule-end-time" value="18:00" class="w-full h-[42px] px-3 rounded-xl border border-[#e7e5d8] bg-[#fcfcfb] text-[13px] text-[#111827] outline-none focus:bg-white focus:border-[#d6d3c8] focus:ring-4 focus:ring-[#f0ede1]">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full h-[44px] rounded-xl bg-[#111827] hover:bg-black text-white text-[14px] font-medium flex items-center justify-center gap-2 transition-colors mt-2">
+          Save Schedule
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </button>
+      </form>
     </div>
   </div>
 

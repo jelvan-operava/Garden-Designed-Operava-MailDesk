@@ -532,6 +532,19 @@
       });
     }
 
+    // Wire signup link
+    const signupLink = $('#signup-link');
+    if (signupLink) {
+      signupLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const emailInput = $('#email');
+        if (emailInput) {
+          emailInput.focus();
+          showToast('Enter your email and password to create an account or sign in');
+        }
+      });
+    }
+
     // Toggle password visibility
     const togglePassBtn = $('#toggle-password-btn');
     if (togglePassBtn) {
@@ -836,6 +849,137 @@
     // Save Profile
     $('#save-profile-btn')?.addEventListener('click', () => {
       showToast('Profile updated');
+    });
+
+    // Automation Scheduling Feature
+    const scheduleModal = $('#schedule-modal');
+    const scheduleBackdrop = $('#schedule-modal-backdrop');
+    const closeScheduleModal = $('#close-schedule-modal');
+    const scheduleForm = $('#schedule-form');
+    const scheduleFreqSelect = $('#schedule-frequency');
+    const scheduleTimeFields = $('#schedule-time-fields');
+    let activeRuleCard = null;
+
+    $$('.edit-schedule-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.automation-rule-card');
+        if (!card) return;
+        activeRuleCard = card;
+        const ruleId = card.dataset.ruleId;
+        const ruleName = card.dataset.ruleName || 'Automation Rule';
+        const freq = card.dataset.frequency || 'daily';
+        const start = card.dataset.start || '09:00';
+        const end = card.dataset.end || '18:00';
+
+        $('#schedule-rule-id').value = ruleId;
+        $('#schedule-modal-title').textContent = `Schedule: ${ruleName}`;
+        if (scheduleFreqSelect) scheduleFreqSelect.value = freq;
+        if ($('#schedule-start-time')) $('#schedule-start-time').value = start;
+        if ($('#schedule-end-time')) $('#schedule-end-time').value = end;
+
+        if (scheduleTimeFields) {
+          scheduleTimeFields.style.display = freq === 'continuous' ? 'none' : 'grid';
+        }
+
+        scheduleModal?.classList.remove('hidden');
+        scheduleModal?.classList.add('flex');
+      });
+    });
+
+    scheduleFreqSelect?.addEventListener('change', () => {
+      if (scheduleTimeFields) {
+        scheduleTimeFields.style.display = scheduleFreqSelect.value === 'continuous' ? 'none' : 'grid';
+      }
+    });
+
+    [scheduleBackdrop, closeScheduleModal].forEach((el) => {
+      el?.addEventListener('click', () => {
+        scheduleModal?.classList.add('hidden');
+        scheduleModal?.classList.remove('flex');
+      });
+    });
+
+    scheduleForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!activeRuleCard) return;
+
+      const freq = scheduleFreqSelect?.value || 'daily';
+      const start = $('#schedule-start-time')?.value || '09:00';
+      const end = $('#schedule-end-time')?.value || '18:00';
+
+      activeRuleCard.dataset.frequency = freq;
+      activeRuleCard.dataset.start = start;
+      activeRuleCard.dataset.end = end;
+
+      const scheduleTextEl = activeRuleCard.querySelector('.schedule-text');
+      if (scheduleTextEl) {
+        if (freq === 'continuous') {
+          scheduleTextEl.textContent = 'Continuous (24/7)';
+        } else if (freq === 'daily') {
+          scheduleTextEl.textContent = `Daily (${start} - ${end})`;
+        } else if (freq === 'weekdays') {
+          scheduleTextEl.textContent = `Weekdays (${start} - ${end})`;
+        } else if (freq === 'hourly') {
+          scheduleTextEl.textContent = 'Every Hour';
+        }
+      }
+
+      scheduleModal?.classList.add('hidden');
+      scheduleModal?.classList.remove('flex');
+      showToast('Automation schedule updated successfully');
+    });
+
+    // Execution Logs Handlers
+    const simulateRunBtn = $('#simulate-run-btn');
+    const clearLogsBtn = $('#clear-logs-btn');
+    const logsContainer = $('#execution-logs-container');
+    const logCountBadge = $('#log-count-badge');
+
+    const ruleNames = [
+      { name: 'Auto-archive newsletters', desc: 'Successfully processed and archived 2 newsletter emails' },
+      { name: 'Star from founders', desc: 'Matched and starred email from executive@partners.com' },
+      { name: 'Trash old promos', desc: 'Successfully moved 5 expired promotional emails to Trash' }
+    ];
+
+    function updateLogCount() {
+      const count = logsContainer?.querySelectorAll('.log-item').length || 0;
+      if (logCountBadge) logCountBadge.textContent = `${count} ${count === 1 ? 'entry' : 'entries'}`;
+    }
+
+    simulateRunBtn?.addEventListener('click', () => {
+      const randRule = ruleNames[Math.floor(Math.random() * ruleNames.length)];
+      const isSuccess = Math.random() > 0.15;
+      const nowStr = 'Just now';
+
+      const logItemHtml = `
+        <div class="p-3.5 flex items-center justify-between text-[12px] gap-3 log-item animate-[float_0.3s_ease]">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-2 h-2 rounded-full ${isSuccess ? 'bg-emerald-500' : 'bg-red-500'} shrink-0"></span>
+            <div class="min-w-0">
+              <div class="font-medium text-[#111827] truncate">${randRule.name}</div>
+              <div class="text-[11px] text-[#777] truncate">${randRule.desc}</div>
+            </div>
+          </div>
+          <div class="text-[11px] text-[#999] shrink-0 text-right">
+            <div>${nowStr}</div>
+            <span class="${isSuccess ? 'text-emerald-600' : 'text-red-500'} font-medium text-[10px]">${isSuccess ? 'SUCCESS' : 'FAILED'}</span>
+          </div>
+        </div>
+      `;
+
+      if (logsContainer) {
+        logsContainer.insertAdjacentHTML('afterbegin', logItemHtml);
+        updateLogCount();
+        showToast(`Rule simulation executed: ${randRule.name}`);
+      }
+    });
+
+    clearLogsBtn?.addEventListener('click', () => {
+      if (logsContainer) {
+        logsContainer.innerHTML = '<div class="p-6 text-center text-[12px] text-[#999]">No execution logs recorded yet.</div>';
+        updateLogCount();
+        showToast('Execution logs cleared');
+      }
     });
 
     // Initial Session Check & Routing

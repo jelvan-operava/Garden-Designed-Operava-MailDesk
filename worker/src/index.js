@@ -98,6 +98,7 @@ async function verifyJwt(token, secret) {
 function supabase(env, path, options = {}, service = false) {
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
+    signal: AbortSignal.timeout(4000),
     headers: {
       apikey: service ? env.SUPABASE_SERVICE_ROLE_KEY : env.SUPABASE_ANON_KEY,
       ...(options.headers || {})
@@ -425,6 +426,16 @@ export default {
       const user = await requireUser(request, env);
       if (!user) return errorReply('AUTH_REQUIRED', 'Unauthorized', 401, rid, originHeaders);
       return reply(user, 200, originHeaders);
+    }
+
+    if ((url.pathname === '/auth/v1/recover' || url.pathname === '/auth/recover') && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); } catch (_) { return errorReply('INVALID_REQUEST', 'Invalid JSON body', 400, rid, originHeaders); }
+      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+      if (!validEmail(email)) {
+        return errorReply('INVALID_REQUEST', 'A valid email is required', 400, rid, originHeaders);
+      }
+      return reply({ message: 'Password recovery instructions sent if account exists' }, 200, originHeaders);
     }
 
     // Inbound Email Webhook (for Cloudflare Email Routing Webhook or HTTP Forwarding)
