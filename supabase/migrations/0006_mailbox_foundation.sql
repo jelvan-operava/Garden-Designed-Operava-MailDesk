@@ -45,6 +45,11 @@ create table if not exists public.attachments (
   created_at timestamptz not null default now()
 );
 
+-- PostgreSQL requires referenced composite columns to be unique before
+-- foreign keys can target them. Create these indexes before the FK constraints.
+create unique index if not exists threads_user_id_id_idx on public.threads (user_id, id);
+create unique index if not exists folders_user_id_id_idx on public.folders (user_id, id);
+
 do $$ begin
   alter table public.emails
     add constraint emails_thread_fk foreign key (user_id, thread_id) references public.threads(user_id, id) on delete set null;
@@ -54,9 +59,6 @@ do $$ begin
   alter table public.emails
     add constraint emails_folder_fk foreign key (user_id, folder_id) references public.folders(user_id, id) on delete set null;
 exception when duplicate_object then null; end $$;
-
-create unique index if not exists threads_user_id_id_idx on public.threads (user_id, id);
-create unique index if not exists folders_user_id_id_idx on public.folders (user_id, id);
 
 create index if not exists threads_user_latest_idx on public.threads (user_id, latest_message_at desc);
 create index if not exists folders_user_idx on public.folders (user_id);
