@@ -17,6 +17,13 @@ Public. Returns service health.
 ## GET /me
 Authenticated. Returns the validated Supabase user's id and email.
 
+## POST /ai/draft
+Authenticated. Generates draft text through the configured Cloudflare Workers AI binding. Body:
+```json
+{"instruction":"Write a concise follow-up","source":"Optional source text"}
+```
+`instruction` is required and limited to 4000 characters; `source` is optional and limited to 20000 characters. The route returns draft text only and performs no email send or data mutation. Provider/binding failures return structured 5xx/503 errors; no fake fallback is used.
+
 ## GET /emails
 Authenticated. Lists rows visible to the user through RLS, newest first.
 
